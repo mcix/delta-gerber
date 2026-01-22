@@ -28,7 +28,7 @@ public class ApertureVisualTest {
         .setBackgroundColor("#0f0f23")  // Dark SVG background
         .setFixedViewBoxSize(4.0)  // Fixed viewBox so different sizes are visible
         .setFlipY(true)  // Enable Y-flip for correct Gerber coordinate display
-        .setPolygonizeMode();  // Polygonized output like pcbpreflight
+        .setPolygonizeMode();  // Polygonized output
 
     // Test case data class
     record ApertureTestCase(String name, String description, String gerber) {}

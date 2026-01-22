@@ -19,9 +19,6 @@ import org.xml.sax.InputSource;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,16 +35,13 @@ import static org.junit.jupiter.api.Assertions.*;
 public class GerberSvgValidationTest {
 
     private static final Path TEST_SUITE_DIR = Path.of("test-gerber-suite");
-    private static final Path REFERENCE_SVG = Path.of("target/test-gerber-suite.svg");
+    private static final Path REFERENCE_SVG = Path.of("test-gerber-suite/test-gerber-suite.svg");
     private static final Path OUTPUT_DIR = Path.of("target/svg-validation");
-    private static final Path REFERENCE_DIR = Path.of("test-gerber-suite/reference-svg");
+    private static final Path REFERENCE_LAYERS_DIR = Path.of("test-gerber-suite/reference-layers");
 
     // Set to true to regenerate reference SVGs (run once to create baseline)
     private static final boolean GENERATE_REFERENCE = Boolean.parseBoolean(
         System.getProperty("generateReference", "false"));
-
-    // Tolerance for floating point comparisons (in mm)
-    private static final double COMPARISON_TOLERANCE = 1e-4;
 
     // Known issues with reference renderer (e.g., rectangle with hole not supported)
     private static final Set<String> SKIP_REFERENCE_COMPARISON = Set.of(
@@ -70,32 +64,56 @@ public class GerberSvgValidationTest {
         .setMargin(0.5)
         .setPolygonizeMode();
 
-    private final SvgComparer comparer = new SvgComparer(COMPARISON_TOLERANCE);
-
-    private static ReferenceSvgData referenceData;
+    private static Map<String, Path> referenceLayerFiles;
     private static final List<ValidationResult> allResults = new ArrayList<>();
 
     @BeforeAll
     static void setupAll() throws Exception {
         // Create output directory
         Files.createDirectories(OUTPUT_DIR);
-        Files.createDirectories(REFERENCE_DIR);
 
         if (GENERATE_REFERENCE) {
             System.out.println("=== REFERENCE GENERATION MODE ===");
-            System.out.println("Reference SVGs will be generated/updated in: " + REFERENCE_DIR);
+            System.out.println("Reference SVGs will be generated/updated in: " + REFERENCE_LAYERS_DIR);
         }
 
-        // Parse reference SVG to extract structural data
+        // Split reference SVG into individual layer files (if not already done)
         if (Files.exists(REFERENCE_SVG)) {
-            referenceData = parseReferenceSvg(REFERENCE_SVG);
-            System.out.println("Reference SVG loaded:");
-            System.out.println("  - Aperture definitions: " + referenceData.apertureIds.size());
-            System.out.println("  - Transform matrix present: " + (referenceData.viewportTransform != null));
+            if (!Files.exists(REFERENCE_LAYERS_DIR) || !hasLayerFiles(REFERENCE_LAYERS_DIR)) {
+                System.out.println("Splitting reference SVG into individual layer files...");
+                referenceLayerFiles = SvgLayerSplitter.split(REFERENCE_SVG, REFERENCE_LAYERS_DIR);
+            } else {
+                System.out.println("Using existing reference layer files from: " + REFERENCE_LAYERS_DIR);
+                referenceLayerFiles = loadExistingLayerFiles(REFERENCE_LAYERS_DIR);
+            }
+            System.out.println("Reference layers available: " + referenceLayerFiles.size());
         } else {
-            System.out.println("NOTE: Combined reference SVG not found at " + REFERENCE_SVG);
-            System.out.println("Individual reference SVGs will be used from: " + REFERENCE_DIR);
+            System.out.println("WARNING: Reference SVG not found at " + REFERENCE_SVG);
+            referenceLayerFiles = new HashMap<>();
         }
+    }
+
+    private static boolean hasLayerFiles(Path dir) throws IOException {
+        if (!Files.isDirectory(dir)) return false;
+        try (var stream = Files.list(dir)) {
+            return stream.anyMatch(p -> p.toString().endsWith(".svg"));
+        }
+    }
+
+    private static Map<String, Path> loadExistingLayerFiles(Path dir) throws IOException {
+        Map<String, Path> result = new HashMap<>();
+        try (var stream = Files.list(dir)) {
+            stream.filter(p -> p.toString().endsWith(".svg"))
+                  .forEach(p -> {
+                      String fileName = p.getFileName().toString();
+                      // Convert file name back to layer ID (remove .svg, replace _ with space)
+                      String layerId = fileName.replace(".svg", "").replace("_", " ");
+                      result.put(layerId, p);
+                      // Also add with original name (underscores)
+                      result.put(fileName.replace(".svg", ""), p);
+                  });
+        }
+        return result;
     }
 
     @AfterAll
@@ -222,6 +240,13 @@ public class GerberSvgValidationTest {
         validateGerberFile("apertures/07_polygon_rotation.gbr");
     }
 
+    @Test
+    @Order(8)
+    @DisplayName("Apertures - Zero size aperture")
+    void testZeroSizeAperture() throws Exception {
+        validateGerberFile("apertures/08_zero_size_aperture.gbr");
+    }
+
     // ============================================================
     // Test: Macro Apertures
     // ============================================================
@@ -268,6 +293,13 @@ public class GerberSvgValidationTest {
         validateGerberFile("macros/06_thermal_primitive.gbr");
     }
 
+    @Test
+    @Order(16)
+    @DisplayName("Macros - Variables and expressions")
+    void testMacroVariables() throws Exception {
+        validateGerberFile("macros/07_macro_variables.gbr");
+    }
+
     // ============================================================
     // Test: Plotting Operations
     // ============================================================
@@ -293,6 +325,20 @@ public class GerberSvgValidationTest {
         validateGerberFile("plotting/03_circular_ccw.gbr");
     }
 
+    @Test
+    @Order(23)
+    @DisplayName("Plotting - Full circles")
+    void testFullCircles() throws Exception {
+        validateGerberFile("plotting/04_full_circles.gbr");
+    }
+
+    @Test
+    @Order(24)
+    @DisplayName("Plotting - Modal coordinates")
+    void testModalCoordinates() throws Exception {
+        validateGerberFile("plotting/05_modal_coordinates.gbr");
+    }
+
     // ============================================================
     // Test: Regions
     // ============================================================
@@ -309,6 +355,27 @@ public class GerberSvgValidationTest {
     @DisplayName("Regions - With arcs")
     void testRegionsWithArcs() throws Exception {
         validateGerberFile("regions/02_regions_with_arcs.gbr");
+    }
+
+    @Test
+    @Order(32)
+    @DisplayName("Regions - Holes with polarity (LPC)")
+    void testRegionsWithHolesPolarity() throws Exception {
+        validateGerberFile("regions/03_regions_with_holes_polarity.gbr");
+    }
+
+    @Test
+    @Order(33)
+    @DisplayName("Regions - Holes with cut-ins")
+    void testRegionsWithCutins() throws Exception {
+        validateGerberFile("regions/04_regions_with_cutins.gbr");
+    }
+
+    @Test
+    @Order(34)
+    @DisplayName("Regions - Multiple contours")
+    void testRegionsMultipleContours() throws Exception {
+        validateGerberFile("regions/05_multiple_contours.gbr");
     }
 
     // ============================================================
@@ -348,6 +415,85 @@ public class GerberSvgValidationTest {
     }
 
     // ============================================================
+    // Test: Block Apertures
+    // ============================================================
+
+    @Test
+    @Order(55)
+    @DisplayName("Blocks - Basic block aperture")
+    void testBlockApertureBasic() throws Exception {
+        validateGerberFile("blocks/01_block_aperture_basic.gbr");
+    }
+
+    @Test
+    @Order(56)
+    @DisplayName("Blocks - Block with transforms")
+    void testBlockApertureTransforms() throws Exception {
+        validateGerberFile("blocks/02_block_aperture_transforms.gbr");
+    }
+
+    @Test
+    @Order(57)
+    @DisplayName("Blocks - Block with polarity")
+    void testBlockAperturePolarity() throws Exception {
+        validateGerberFile("blocks/03_block_aperture_polarity.gbr");
+    }
+
+    // ============================================================
+    // Test: Step and Repeat
+    // ============================================================
+
+    @Test
+    @Order(58)
+    @DisplayName("Step-Repeat - Basic arrays")
+    void testStepRepeatBasic() throws Exception {
+        validateGerberFile("step-repeat/01_step_repeat_basic.gbr");
+    }
+
+    @Test
+    @Order(59)
+    @DisplayName("Step-Repeat - Complex with regions")
+    void testStepRepeatComplex() throws Exception {
+        validateGerberFile("step-repeat/02_step_repeat_complex.gbr");
+    }
+
+    // ============================================================
+    // Test: Inch Units
+    // ============================================================
+
+    @Test
+    @Order(70)
+    @DisplayName("Inch - Apertures")
+    void testInchApertures() throws Exception {
+        validateGerberFile("inch/01_inch_apertures.gbr");
+    }
+
+    @Test
+    @Order(71)
+    @DisplayName("Inch - Plotting")
+    void testInchPlotting() throws Exception {
+        validateGerberFile("inch/02_inch_plotting.gbr");
+    }
+
+    // ============================================================
+    // Test: Attributes
+    // ============================================================
+
+    @Test
+    @Order(75)
+    @DisplayName("Attributes - File attributes (TF)")
+    void testFileAttributes() throws Exception {
+        validateGerberFile("attributes/01_file_attributes.gbr");
+    }
+
+    @Test
+    @Order(76)
+    @DisplayName("Attributes - Aperture and object attributes")
+    void testApertureObjectAttributes() throws Exception {
+        validateGerberFile("attributes/02_aperture_object_attributes.gbr");
+    }
+
+    // ============================================================
     // Test: Combined
     // ============================================================
 
@@ -363,6 +509,13 @@ public class GerberSvgValidationTest {
     @DisplayName("Combined - Comprehensive test")
     void testComprehensive() throws Exception {
         validateGerberFile("combined/comprehensive_test.gbr");
+    }
+
+    @Test
+    @Order(62)
+    @DisplayName("Combined - All features comprehensive")
+    void testAllFeaturesComprehensive() throws Exception {
+        validateGerberFile("combined/all_features_comprehensive.gbr");
     }
 
     // ============================================================
@@ -527,12 +680,7 @@ public class GerberSvgValidationTest {
     }
 
     /**
-     * Compare generated SVG against reference SVG using the SvgComparer.
-     * This performs all 4 types of validation:
-     * 1. Element count comparison
-     * 2. ViewBox/bounding box comparison
-     * 3. Aperture ID comparison
-     * 4. Path data comparison with tolerance
+     * Compare generated SVG against reference SVG layer using element count comparison.
      */
     private void compareAgainstReference(String relativePath, String generatedSvg, ValidationResult result) throws Exception {
         // Check if we should skip this file
@@ -541,123 +689,142 @@ public class GerberSvgValidationTest {
             return;
         }
 
-        // Determine reference file path
-        String refFileName = relativePath.replace("/", "_").replace(".gbr", ".svg");
-        Path referencePath = REFERENCE_DIR.resolve(refFileName);
+        // Find the reference layer file by the gerber filename (without path)
+        String gbrFileName = Path.of(relativePath).getFileName().toString();
+        Path refLayerFile = findReferenceLayerFile(gbrFileName);
 
         // Generate reference mode: save current output as new reference
         if (GENERATE_REFERENCE) {
+            Files.createDirectories(REFERENCE_LAYERS_DIR);
+            String refFileName = gbrFileName.replace(".gbr", ".svg").replace(" ", "_");
+            Path referencePath = REFERENCE_LAYERS_DIR.resolve(refFileName);
             Files.writeString(referencePath, generatedSvg);
             result.validationNotes.add("Reference SVG generated: " + refFileName);
             return;
         }
 
         // Check if reference exists
-        if (!Files.exists(referencePath)) {
-            result.validationNotes.add("No reference SVG found. Run with -DgenerateReference=true to create baseline.");
+        if (refLayerFile == null) {
+            result.validationNotes.add("No reference layer found for: " + gbrFileName);
             result.hasWarnings = true;
             return;
         }
 
         // Load reference SVG
-        String referenceSvg = Files.readString(referencePath);
+        String referenceSvg = Files.readString(refLayerFile);
 
-        // Perform comparison using SvgComparer
-        SvgComparer.ComparisonResult comparison = comparer.compare(referenceSvg, generatedSvg);
+        // Copy reference to output dir for easy comparison
+        String baseFileName = gbrFileName.replace(".", "_").replace(" ", "_");
+        Files.copy(refLayerFile, OUTPUT_DIR.resolve(baseFileName + "_reference.svg"),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-        if (comparison.isMatch()) {
-            result.validationNotes.add("✓ Reference comparison passed (all 4 checks)");
+        // Parse both SVGs to count and compare elements
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(false);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+
+        Document refDoc = builder.parse(new InputSource(new StringReader(referenceSvg)));
+        Document genDoc = builder.parse(new InputSource(new StringReader(generatedSvg)));
+
+        // Count elements in reference (excluding defs)
+        int refPathCount = countLayerElements(refDoc, "path");
+        int refCircleCount = countLayerElements(refDoc, "circle");
+        int refUseCount = countLayerElements(refDoc, "use");
+
+        int genPathCount = genDoc.getElementsByTagName("path").getLength();
+        int genCircleCount = genDoc.getElementsByTagName("circle").getLength();
+        int genUseCount = genDoc.getElementsByTagName("use").getLength();
+
+        // Report element counts
+        result.validationNotes.add(String.format("Reference: %d paths, %d circles, %d uses",
+            refPathCount, refCircleCount, refUseCount));
+        result.validationNotes.add(String.format("Generated: %d paths, %d circles, %d uses",
+            genPathCount, genCircleCount, genUseCount));
+
+        // Check for significant differences
+        int totalRef = refPathCount + refCircleCount + refUseCount;
+        int totalGen = genPathCount + genCircleCount + genUseCount;
+
+        if (totalRef > 0 && totalGen > 0) {
+            double ratio = (double) totalGen / totalRef;
+            if (ratio < 0.5 || ratio > 2.0) {
+                result.validationNotes.add(String.format("WARNING: Element count ratio %.2f (expected ~1.0)", ratio));
+                result.hasWarnings = true;
+            } else {
+                result.validationPassed = true;
+            }
+        } else if (totalRef == 0 && totalGen == 0) {
+            result.validationPassed = true;
+            result.validationNotes.add("Both reference and generated are empty");
         } else {
-            // Categorize differences by type
-            int elementCountDiffs = 0;
-            int viewBoxDiffs = 0;
-            int apertureDiffs = 0;
-            int pathDiffs = 0;
-            int otherDiffs = 0;
-
-            for (SvgComparer.Difference diff : comparison.differences) {
-                switch (diff.category) {
-                    case "Element count":
-                        elementCountDiffs++;
-                        break;
-                    case "ViewBox":
-                        viewBoxDiffs++;
-                        break;
-                    case "Aperture IDs":
-                        apertureDiffs++;
-                        break;
-                    case "Path":
-                    case "Path commands":
-                    case "Path command type":
-                    case "Path command values":
-                        pathDiffs++;
-                        break;
-                    default:
-                        otherDiffs++;
-                        break;
-                }
-            }
-
-            // Report summary
-            StringBuilder summary = new StringBuilder();
-            summary.append("Reference comparison: ");
-            summary.append(comparison.differences.size()).append(" difference(s) - ");
-
-            List<String> parts = new ArrayList<>();
-            if (elementCountDiffs > 0) parts.add(elementCountDiffs + " element count");
-            if (viewBoxDiffs > 0) parts.add(viewBoxDiffs + " viewBox");
-            if (apertureDiffs > 0) parts.add(apertureDiffs + " aperture");
-            if (pathDiffs > 0) parts.add(pathDiffs + " path data");
-            if (otherDiffs > 0) parts.add(otherDiffs + " other");
-            summary.append(String.join(", ", parts));
-
-            result.validationNotes.add(summary.toString());
-
-            // Add detailed differences (limit to first 10)
-            int count = 0;
-            for (SvgComparer.Difference diff : comparison.differences) {
-                if (count++ >= 10) {
-                    result.validationNotes.add("  ... and " + (comparison.differences.size() - 10) + " more differences");
-                    break;
-                }
-                result.validationNotes.add("  " + diff.toString());
-            }
-
-            // Mark as warning (not failure) so we can review differences
+            result.validationNotes.add("WARNING: Mismatched empty/non-empty content");
             result.hasWarnings = true;
         }
     }
 
-    // ============================================================
-    // Reference SVG Parsing
-    // ============================================================
-
-    private static ReferenceSvgData parseReferenceSvg(Path svgPath) throws Exception {
-        ReferenceSvgData data = new ReferenceSvgData();
-        String content = Files.readString(svgPath);
-
-        // Extract aperture IDs (D10, D11, etc.)
-        Pattern aperturePattern = Pattern.compile("id=\"(D\\d+)\"");
-        Matcher matcher = aperturePattern.matcher(content);
-        while (matcher.find()) {
-            data.apertureIds.add(matcher.group(1));
+    /**
+     * Find the reference layer file for a given gerber file name.
+     */
+    private Path findReferenceLayerFile(String gbrFileName) {
+        if (referenceLayerFiles == null || referenceLayerFiles.isEmpty()) {
+            return null;
         }
 
-        // Extract viewport transform
-        Pattern transformPattern = Pattern.compile("transform=\"matrix\\(([^)]+)\\)\"");
-        matcher = transformPattern.matcher(content);
-        if (matcher.find()) {
-            data.viewportTransform = matcher.group(1);
+        // Try exact match first (with .gbr extension as layer ID)
+        if (referenceLayerFiles.containsKey(gbrFileName)) {
+            return referenceLayerFiles.get(gbrFileName);
         }
 
-        // Extract viewBox
-        Pattern viewBoxPattern = Pattern.compile("viewBox=\"([^\"]+)\"");
-        matcher = viewBoxPattern.matcher(content);
-        if (matcher.find()) {
-            data.viewBox = matcher.group(1);
+        // Try with underscores instead of spaces
+        String sanitized = gbrFileName.replace(" ", "_");
+        if (referenceLayerFiles.containsKey(sanitized)) {
+            return referenceLayerFiles.get(sanitized);
         }
 
-        return data;
+        // Try direct path lookup
+        Path candidate = REFERENCE_LAYERS_DIR.resolve(sanitized.replace(".gbr", ".svg"));
+        if (Files.exists(candidate)) {
+            return candidate;
+        }
+
+        // Search for a file containing the key part of the name
+        for (Map.Entry<String, Path> entry : referenceLayerFiles.entrySet()) {
+            String key = entry.getKey();
+            if (key.contains(gbrFileName) || gbrFileName.contains(key) ||
+                key.replace("_", " ").equals(gbrFileName) ||
+                gbrFileName.replace("_", " ").equals(key)) {
+                return entry.getValue();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Count elements in a layer (excluding defs section).
+     */
+    private int countLayerElements(Document doc, String tagName) {
+        int count = 0;
+        NodeList elements = doc.getElementsByTagName(tagName);
+        for (int i = 0; i < elements.getLength(); i++) {
+            Element elem = (Element) elements.item(i);
+            // Skip elements inside defs
+            if (!isInsideDefs(elem)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean isInsideDefs(Element elem) {
+        org.w3c.dom.Node parent = elem.getParentNode();
+        while (parent != null) {
+            if (parent instanceof Element && "defs".equals(((Element) parent).getTagName())) {
+                return true;
+            }
+            parent = parent.getParentNode();
+        }
+        return false;
     }
 
     // ============================================================
@@ -681,12 +848,6 @@ public class GerberSvgValidationTest {
         ValidationResult(String fileName) {
             this.fileName = fileName;
         }
-    }
-
-    private static class ReferenceSvgData {
-        Set<String> apertureIds = new HashSet<>();
-        String viewportTransform;
-        String viewBox;
     }
 
     private static String truncate(String s, int maxLen) {

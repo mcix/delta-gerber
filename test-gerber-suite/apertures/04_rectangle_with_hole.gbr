@@ -1,0 +1,18 @@
+G04 Test: Rectangle apertures with holes*
+G04 Tests rectangle aperture with center hole parameter*
+%FSLAX26Y26*%
+%MOMM*%
+%ADD10R,2.0X2.0X0.8*%
+%ADD11R,3.0X1.5X0.6*%
+%ADD12R,1.5X3.0X0.6*%
+%ADD13R,2.5X2.5X1.2*%
+G04 Flash rectangles with holes*
+D10*
+X2500000Y2500000D03*
+D11*
+X7000000Y2500000D03*
+D12*
+X11000000Y2500000D03*
+D13*
+X2500000Y6500000D03*
+M02*

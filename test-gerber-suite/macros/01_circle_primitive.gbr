@@ -1,0 +1,40 @@
+G04 Test: Macro circle primitive (code 1)*
+G04 Tests macro aperture with circle primitives*
+%FSLAX26Y26*%
+%MOMM*%
+G04 Basic circle at origin*
+%AMCircle1*
+1,1,1.5,0,0*%
+G04 Circle offset from center*
+%AMCircle2*
+1,1,0.8,0.5,0.5*%
+G04 Circle with rotation (rotates around origin)*
+%AMCircle3*
+1,1,0.6,1.0,0,45*%
+G04 Multiple circles*
+%AMCircle4*
+1,1,0.5,0,0*
+1,1,0.3,0.8,0*
+1,1,0.3,-0.8,0*
+1,1,0.3,0,0.8*
+1,1,0.3,0,-0.8*%
+G04 Donut using exposure off*
+%AMDonut*
+1,1,1.5,0,0*
+1,0,0.8,0,0*%
+%ADD10Circle1*%
+%ADD11Circle2*%
+%ADD12Circle3*%
+%ADD13Circle4*%
+%ADD14Donut*%
+D10*
+X2000000Y2000000D03*
+D11*
+X6000000Y2000000D03*
+D12*
+X10000000Y2000000D03*
+D13*
+X2000000Y6000000D03*
+D14*
+X6000000Y6000000D03*
+M02*

@@ -82,7 +82,7 @@ public class RectangleAperture extends Aperture {
                 return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
                     id, pathData, darkColor);
             } else {
-                return String.format(
+                return String.format(java.util.Locale.US,
                     "<rect id=\"%s\" x=\"%.6f\" y=\"%.6f\" width=\"%.6f\" height=\"%.6f\" fill=\"%s\"/>",
                     id, -hw, -hh, width, height, darkColor);
             }

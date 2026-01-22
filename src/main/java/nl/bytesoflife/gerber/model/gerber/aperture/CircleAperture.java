@@ -79,7 +79,7 @@ public class CircleAperture extends Aperture {
                 return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
                     id, pathData, darkColor);
             } else {
-                return String.format(
+                return String.format(java.util.Locale.US,
                     "<circle id=\"%s\" cx=\"0\" cy=\"0\" r=\"%.6f\" fill=\"%s\"/>",
                     id, r, darkColor);
             }

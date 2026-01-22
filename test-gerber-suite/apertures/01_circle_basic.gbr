@@ -1,0 +1,24 @@
+G04 Test: Circle apertures - basic sizes*
+G04 Tests standard circle aperture template (C)*
+%FSLAX26Y26*%
+%MOMM*%
+%ADD10C,0.2*%
+%ADD11C,0.5*%
+%ADD12C,1.0*%
+%ADD13C,1.5*%
+%ADD14C,2.0*%
+%ADD15C,2.5*%
+G04 Flash circles in a row to compare sizes*
+D10*
+X1000000Y2000000D03*
+D11*
+X3000000Y2000000D03*
+D12*
+X5500000Y2000000D03*
+D13*
+X8500000Y2000000D03*
+D14*
+X12000000Y2000000D03*
+D15*
+X16000000Y2000000D03*
+M02*

@@ -1,0 +1,15 @@
+G04 =========================================*
+G04 Numerical Innovations - Layer Information*
+G04 Units: English*
+G04 Purpose: *
+G04 =========================================*
+G04 FAB 3000 Version 8.3.44 (64-bit) - Gerber/CAM Software*
+G04 RS274-X Output*
+%FSLAX35Y35*%
+%MIA0B0*%
+%MOIN*%
+%SFA1.000000B1.000000*%
+
+%IPPOS*%
+%ADD10C,1.0000*%
+M02*

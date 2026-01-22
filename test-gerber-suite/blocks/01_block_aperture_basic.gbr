@@ -1,0 +1,72 @@
+G04 Test: Block apertures (AB statement)*
+G04 Tests block aperture definition and flashing*
+G04 Based on Gerber spec section 4.11*
+%FSLAX26Y26*%
+%MOMM*%
+%LPD*%
+G04 Define a simple aperture for use in blocks*
+%ADD10C,0.5*%
+%ADD11C,0.3*%
+G04 Define block aperture D12: a simple cross shape*
+%ABD12*%
+D10*
+G01*
+X-1000000Y0D02*
+X1000000Y0D01*
+X0Y-1000000D02*
+X0Y1000000D01*
+%AB*%
+G04 Define block aperture D13: circle with center dot*
+%ABD13*%
+D10*
+G75*
+G03*
+X1000000Y0I500000J0D02*
+X1000000Y0I500000J0D01*
+D11*
+X0Y0D03*
+%AB*%
+G04 Define block aperture D14: triangle with internal features*
+%ABD14*%
+D10*
+G01*
+X-1000000Y-500000D02*
+X1000000Y-500000D01*
+X0Y1000000D01*
+X-1000000Y-500000D01*
+D11*
+X0Y0D03*
+%AB*%
+G04 Define block aperture D15: rectangle outline with pads*
+%ABD15*%
+D11*
+G01*
+X-1500000Y-1000000D02*
+X1500000Y-1000000D01*
+X1500000Y1000000D01*
+X-1500000Y1000000D01*
+X-1500000Y-1000000D01*
+%ADD16C,0.6*%
+D16*
+X-1500000Y0D03*
+X1500000Y0D03*
+%AB*%
+G04 Flash block apertures in a grid*
+D12*
+X3000000Y3000000D03*
+D13*
+X9000000Y3000000D03*
+D14*
+X15000000Y3000000D03*
+D15*
+X21000000Y3000000D03*
+G04 Flash same blocks at different positions*
+D12*
+X3000000Y9000000D03*
+D13*
+X9000000Y9000000D03*
+D14*
+X15000000Y9000000D03*
+D15*
+X21000000Y9000000D03*
+M02*

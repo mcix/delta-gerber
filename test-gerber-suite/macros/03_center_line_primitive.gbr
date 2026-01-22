@@ -1,0 +1,48 @@
+G04 Test: Macro center line primitive (code 21)*
+G04 Tests macro aperture with center line (rectangle) primitives*
+%FSLAX26Y26*%
+%MOMM*%
+G04 Horizontal center line*
+%AMCLH*
+21,1,2.0,0.5,0,0,0*%
+G04 Vertical center line*
+%AMCLV*
+21,1,0.5,2.0,0,0,0*%
+G04 Square center line*
+%AMCLSq*
+21,1,1.5,1.5,0,0,0*%
+G04 Rotated center line 30 degrees*
+%AMCLR30*
+21,1,2.0,0.4,0,0,30*%
+G04 Rotated center line 45 degrees*
+%AMCLR45*
+21,1,2.0,0.4,0,0,45*%
+G04 Offset center line*
+%AMCLOff*
+21,1,1.5,0.6,0.5,0.3,0*%
+G04 Rectangle with hole (two primitives)*
+%AMRectHole*
+21,1,2.0,2.0,0,0,0*
+1,0,0.8,0,0*%
+%ADD10CLH*%
+%ADD11CLV*%
+%ADD12CLSq*%
+%ADD13CLR30*%
+%ADD14CLR45*%
+%ADD15CLOff*%
+%ADD16RectHole*%
+D10*
+X2000000Y2000000D03*
+D11*
+X5500000Y2000000D03*
+D12*
+X9000000Y2000000D03*
+D13*
+X12500000Y2000000D03*
+D14*
+X2000000Y5500000D03*
+D15*
+X5500000Y5500000D03*
+D16*
+X9000000Y5500000D03*
+M02*

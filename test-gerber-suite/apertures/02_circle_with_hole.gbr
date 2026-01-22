@@ -1,0 +1,21 @@
+G04 Test: Circle apertures with holes*
+G04 Tests circle aperture with center hole parameter*
+%FSLAX26Y26*%
+%MOMM*%
+%ADD10C,2.0X0.5*%
+%ADD11C,2.0X1.0*%
+%ADD12C,2.0X1.5*%
+%ADD13C,3.0X1.0*%
+%ADD14C,3.0X2.0*%
+G04 Flash circles with different hole sizes*
+D10*
+X2500000Y2500000D03*
+D11*
+X7000000Y2500000D03*
+D12*
+X11500000Y2500000D03*
+D13*
+X2500000Y7000000D03*
+D14*
+X7000000Y7000000D03*
+M02*

@@ -1,0 +1,24 @@
+G04 Test: Obround apertures - pill shapes*
+G04 Tests standard obround aperture template (O)*
+%FSLAX26Y26*%
+%MOMM*%
+%ADD10O,2.0X1.0*%
+%ADD11O,1.0X2.0*%
+%ADD12O,3.0X1.0*%
+%ADD13O,1.0X3.0*%
+%ADD14O,1.5X1.5*%
+%ADD15O,2.5X1.5*%
+G04 Flash obrounds - horizontal and vertical*
+D10*
+X2500000Y2000000D03*
+D11*
+X6000000Y2000000D03*
+D12*
+X10000000Y2000000D03*
+D13*
+X2500000Y6000000D03*
+D14*
+X6000000Y6000000D03*
+D15*
+X10000000Y6000000D03*
+M02*

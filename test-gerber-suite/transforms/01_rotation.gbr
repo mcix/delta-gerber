@@ -1,0 +1,42 @@
+G04 Test: Aperture rotation (LR)*
+G04 Tests LR command for rotating apertures*
+%FSLAX26Y26*%
+%MOMM*%
+%ADD10R,2.0X0.6*%
+%ADD11P,2.0X3*%
+%LPD*%
+G04 Rectangle at 0 degrees*
+%LR0*%
+D10*
+X2000000Y2000000D03*
+G04 Rectangle at 30 degrees*
+%LR30*%
+X6000000Y2000000D03*
+G04 Rectangle at 45 degrees*
+%LR45*%
+X10000000Y2000000D03*
+G04 Rectangle at 60 degrees*
+%LR60*%
+X14000000Y2000000D03*
+G04 Rectangle at 90 degrees*
+%LR90*%
+X18000000Y2000000D03*
+G04 Triangle at 0 degrees*
+%LR0*%
+D11*
+X2000000Y6000000D03*
+G04 Triangle at 30 degrees*
+%LR30*%
+X6000000Y6000000D03*
+G04 Triangle at 60 degrees*
+%LR60*%
+X10000000Y6000000D03*
+G04 Triangle at 90 degrees*
+%LR90*%
+X14000000Y6000000D03*
+G04 Triangle at 120 degrees*
+%LR120*%
+X18000000Y6000000D03*
+G04 Reset rotation*
+%LR0*%
+M02*

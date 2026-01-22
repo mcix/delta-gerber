@@ -1,0 +1,64 @@
+G04 Test: Inch units - standard apertures*
+G04 Tests all standard apertures using inch units*
+G04 Equivalent to mm/apertures tests but in inches*
+%FSLAX26Y26*%
+%MOIN*%
+G04 Circle apertures - various sizes in inches*
+%ADD10C,0.010*%
+%ADD11C,0.020*%
+%ADD12C,0.040*%
+%ADD13C,0.060*%
+G04 Rectangle apertures*
+%ADD20R,0.020X0.010*%
+%ADD21R,0.040X0.020*%
+%ADD22R,0.030X0.030*%
+G04 Obround apertures*
+%ADD30O,0.030X0.015*%
+%ADD31O,0.015X0.030*%
+G04 Polygon apertures*
+%ADD40P,0.040X3*%
+%ADD41P,0.040X4*%
+%ADD42P,0.040X5*%
+%ADD43P,0.040X6*%
+%ADD44P,0.040X6X30*%
+G04 Apertures with holes*
+%ADD50C,0.050X0.020*%
+%ADD51R,0.050X0.030X0.015*%
+G04 Flash circles in a row (Y = 0.1 inch)*
+D10*
+X50000Y100000D03*
+D11*
+X150000Y100000D03*
+D12*
+X300000Y100000D03*
+D13*
+X500000Y100000D03*
+G04 Flash rectangles (Y = 0.25 inch)*
+D20*
+X50000Y250000D03*
+D21*
+X150000Y250000D03*
+D22*
+X300000Y250000D03*
+G04 Flash obrounds (Y = 0.4 inch)*
+D30*
+X50000Y400000D03*
+D31*
+X150000Y400000D03*
+G04 Flash polygons (Y = 0.55 inch)*
+D40*
+X50000Y550000D03*
+D41*
+X150000Y550000D03*
+D42*
+X250000Y550000D03*
+D43*
+X350000Y550000D03*
+D44*
+X450000Y550000D03*
+G04 Flash apertures with holes (Y = 0.7 inch)*
+D50*
+X100000Y700000D03*
+D51*
+X250000Y700000D03*
+M02*

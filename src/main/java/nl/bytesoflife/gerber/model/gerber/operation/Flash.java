@@ -88,16 +88,19 @@ public class Flash extends GraphicsObject {
             transform.append(String.format(Locale.US, " scale(%.6f)", scale));
         }
 
+        // Get aperture ID prefix from options (allows multi-layer SVGs with unique IDs)
+        String prefix = options.getApertureIdPrefix();
+
         // If we have transforms other than position, use transform attribute
         if (rotation != 0 || scale != 1.0 || mirrorX || mirrorY) {
             return String.format(Locale.US,
-                "<use href=\"#ap%d\" transform=\"%s\"/>",
-                aperture.getDCode(), transform.toString());
+                "<use href=\"#%s%d\" transform=\"%s\"/>",
+                prefix, aperture.getDCode(), transform.toString());
         } else {
             // Simple case: just position
             return String.format(Locale.US,
-                "<use href=\"#ap%d\" x=\"%.6f\" y=\"%.6f\"/>",
-                aperture.getDCode(), x, y);
+                "<use href=\"#%s%d\" x=\"%.6f\" y=\"%.6f\"/>",
+                prefix, aperture.getDCode(), x, y);
         }
     }
 

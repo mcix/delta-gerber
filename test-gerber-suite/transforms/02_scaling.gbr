@@ -1,0 +1,36 @@
+G04 Test: Aperture scaling (LS)*
+G04 Tests LS command for scaling apertures*
+%FSLAX26Y26*%
+%MOMM*%
+%ADD10C,1.0*%
+%ADD11R,1.5X0.5*%
+%LPD*%
+G04 Circle at scale 0.5*
+%LS0.5*%
+D10*
+X2000000Y2000000D03*
+G04 Circle at scale 0.75*
+%LS0.75*%
+X5000000Y2000000D03*
+G04 Circle at scale 1.0*
+%LS1.0*%
+X8000000Y2000000D03*
+G04 Circle at scale 1.5*
+%LS1.5*%
+X12000000Y2000000D03*
+G04 Circle at scale 2.0*
+%LS2.0*%
+X17000000Y2000000D03*
+G04 Rectangle at various scales*
+D11*
+%LS0.5*%
+X2000000Y6000000D03*
+%LS1.0*%
+X5500000Y6000000D03*
+%LS1.5*%
+X9500000Y6000000D03*
+%LS2.0*%
+X14500000Y6000000D03*
+G04 Reset scaling*
+%LS1.0*%
+M02*

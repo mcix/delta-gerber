@@ -82,10 +82,10 @@ public class MoirePrimitive implements MacroPrimitive {
             StringBuilder svg = new StringBuilder();
             if (rot != 0) {
                 svg.append(String.format(java.util.Locale.US, "<g transform=\"rotate(%.6f %.6f %.6f)\">", rot, cx, cy));
-                svg.append(String.format("<path d=\"%s\" fill=\"black\" fill-rule=\"evenodd\"/>", pathData));
+                svg.append(String.format(java.util.Locale.US, "<path d=\"%s\" fill=\"black\" fill-rule=\"evenodd\"/>", pathData));
                 svg.append("</g>");
             } else {
-                svg.append(String.format("<path d=\"%s\" fill=\"black\" fill-rule=\"evenodd\"/>", pathData));
+                svg.append(String.format(java.util.Locale.US, "<path d=\"%s\" fill=\"black\" fill-rule=\"evenodd\"/>", pathData));
             }
             return svg.toString();
         } else {

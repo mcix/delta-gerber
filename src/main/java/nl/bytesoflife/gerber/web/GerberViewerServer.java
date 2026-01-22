@@ -7,8 +7,9 @@ import nl.bytesoflife.gerber.model.drill.DrillDocument;
 import nl.bytesoflife.gerber.model.gerber.GerberDocument;
 import nl.bytesoflife.gerber.parser.ExcellonParser;
 import nl.bytesoflife.gerber.parser.GerberParser;
-import nl.bytesoflife.gerber.renderer.svg.DrillSVGRenderer;
-import nl.bytesoflife.gerber.renderer.svg.SVGRenderer;
+import nl.bytesoflife.gerber.renderer.svg.MultiLayerSVGRenderer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -21,6 +22,8 @@ import java.util.zip.ZipInputStream;
  * Simple HTTP server for the Gerber viewer web application.
  */
 public class GerberViewerServer {
+
+    private static final Logger log = LoggerFactory.getLogger(GerberViewerServer.class);
 
     private final int port;
     private HttpServer server;
@@ -35,7 +38,7 @@ public class GerberViewerServer {
         server.createContext("/api/parse", new ParseHandler());
         server.setExecutor(null);
         server.start();
-        System.out.println("Gerber Viewer Server started at http://localhost:" + port);
+        log.info("Gerber Viewer Server started at http://localhost:{}", port);
     }
 
     public void stop() {
@@ -61,13 +64,38 @@ public class GerberViewerServer {
     }
 
     /**
-     * Handles ZIP file uploads and returns parsed SVG layers.
+     * Handles ZIP file uploads and returns a multi-layer SVG.
      */
     static class ParseHandler implements HttpHandler {
+        private static final Logger log = LoggerFactory.getLogger(ParseHandler.class);
+
         private final GerberParser gerberParser = new GerberParser();
         private final ExcellonParser drillParser = new ExcellonParser();
-        private final SVGRenderer svgRenderer = new SVGRenderer();
-        private final DrillSVGRenderer drillRenderer = new DrillSVGRenderer();
+        private final MultiLayerSVGRenderer multiLayerRenderer = new MultiLayerSVGRenderer();
+
+        // Layer colors for different file types
+        private static final Map<String, String> LAYER_COLORS = new LinkedHashMap<>();
+        static {
+            // Copper layers
+            LAYER_COLORS.put("gtl", "#e94560"); LAYER_COLORS.put("top", "#e94560"); LAYER_COLORS.put("f_cu", "#e94560");
+            LAYER_COLORS.put("gbl", "#4169e1"); LAYER_COLORS.put("bottom", "#4169e1"); LAYER_COLORS.put("b_cu", "#4169e1");
+            LAYER_COLORS.put("g2", "#ff8c00"); LAYER_COLORS.put("g1", "#ff6600");
+            LAYER_COLORS.put("g3", "#9932cc"); LAYER_COLORS.put("in1", "#ff8c00"); LAYER_COLORS.put("in2", "#9932cc");
+            // Solder mask
+            LAYER_COLORS.put("gts", "#00aa00"); LAYER_COLORS.put("gbs", "#006600");
+            LAYER_COLORS.put("f_mask", "#00aa00"); LAYER_COLORS.put("b_mask", "#006600");
+            // Silkscreen
+            LAYER_COLORS.put("gto", "#ffffff"); LAYER_COLORS.put("gbo", "#cccccc");
+            LAYER_COLORS.put("f_silks", "#ffffff"); LAYER_COLORS.put("b_silks", "#cccccc");
+            // Paste
+            LAYER_COLORS.put("gtp", "#888888"); LAYER_COLORS.put("gbp", "#666666");
+            LAYER_COLORS.put("f_paste", "#888888"); LAYER_COLORS.put("b_paste", "#666666");
+            // Outline/Edge
+            LAYER_COLORS.put("gko", "#ffff00"); LAYER_COLORS.put("gm1", "#ffff00"); LAYER_COLORS.put("edge", "#ffff00");
+            // Drill
+            LAYER_COLORS.put("drl", "#00ffff"); LAYER_COLORS.put("xln", "#00ffff");
+            LAYER_COLORS.put("drill", "#00ffff"); LAYER_COLORS.put("txt", "#00ffff");
+        }
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -76,45 +104,92 @@ public class GerberViewerServer {
                 return;
             }
 
+            long startTime = System.currentTimeMillis();
+            log.info("Received parse request");
+
             try {
                 // Read the uploaded ZIP file
+                log.debug("Reading uploaded ZIP data...");
                 byte[] zipData = exchange.getRequestBody().readAllBytes();
-                Map<String, String> layers = parseZipFile(zipData);
+                log.info("Received ZIP file: {} bytes", zipData.length);
 
-                // Build JSON response
+                ParseResult result = parseZipFile(zipData);
+
+                // Build JSON response with layer metadata and combined SVG
+                log.debug("Building JSON response...");
                 StringBuilder json = new StringBuilder();
                 json.append("{\"layers\":[");
                 boolean first = true;
-                for (Map.Entry<String, String> entry : layers.entrySet()) {
+                for (LayerInfo layer : result.layerInfos) {
                     if (!first) json.append(",");
                     first = false;
                     json.append("{\"name\":");
-                    json.append(escapeJson(entry.getKey()));
-                    json.append(",\"svg\":");
-                    json.append(escapeJson(entry.getValue()));
+                    json.append(escapeJson(layer.name));
+                    json.append(",\"id\":");
+                    json.append(escapeJson(layer.id));
+                    json.append(",\"color\":");
+                    json.append(escapeJson(layer.color));
+                    json.append(",\"type\":");
+                    json.append(escapeJson(layer.type));
                     json.append("}");
                 }
-                json.append("]}");
+                json.append("],\"svg\":");
+                json.append(escapeJson(result.svg));
+                json.append("}");
+
+                long elapsed = System.currentTimeMillis() - startTime;
+                log.info("Parse complete: {} layers, {} chars SVG in {}ms",
+                    result.layerInfos.size(), result.svg.length(), elapsed);
 
                 sendResponse(exchange, 200, "application/json", json.toString());
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Error parsing file", e);
                 sendResponse(exchange, 500, "application/json",
                     "{\"error\":" + escapeJson(e.getMessage()) + "}");
             }
         }
 
-        private Map<String, String> parseZipFile(byte[] zipData) throws IOException {
-            Map<String, String> layers = new LinkedHashMap<>();
+        private static class LayerInfo {
+            String name;
+            String id;
+            String color;
+            String type;
 
+            LayerInfo(String name, String id, String color, String type) {
+                this.name = name;
+                this.id = id;
+                this.color = color;
+                this.type = type;
+            }
+        }
+
+        private static class ParseResult {
+            List<LayerInfo> layerInfos;
+            String svg;
+
+            ParseResult(List<LayerInfo> layerInfos, String svg) {
+                this.layerInfos = layerInfos;
+                this.svg = svg;
+            }
+        }
+
+        private ParseResult parseZipFile(byte[] zipData) throws IOException {
+            List<MultiLayerSVGRenderer.Layer> layers = new ArrayList<>();
+            List<LayerInfo> layerInfos = new ArrayList<>();
+
+            log.debug("Opening ZIP stream...");
             try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipData))) {
                 ZipEntry entry;
+                int fileCount = 0;
                 while ((entry = zis.getNextEntry()) != null) {
                     if (entry.isDirectory()) continue;
 
                     String name = entry.getName();
                     // Skip hidden files and directories
-                    if (name.contains("__MACOSX") || name.startsWith(".")) continue;
+                    if (name.contains("__MACOSX") || name.startsWith(".")) {
+                        log.trace("Skipping hidden file: {}", name);
+                        continue;
+                    }
 
                     // Get just the filename
                     int lastSlash = name.lastIndexOf('/');
@@ -122,31 +197,71 @@ public class GerberViewerServer {
                         name = name.substring(lastSlash + 1);
                     }
 
+                    fileCount++;
+                    log.debug("Processing file {}: {}", fileCount, name);
+                    long fileStart = System.currentTimeMillis();
+
                     byte[] content = zis.readAllBytes();
                     String contentStr = new String(content, StandardCharsets.UTF_8);
-
-                    String svg = null;
                     String layerType = detectLayerType(name, contentStr);
+                    log.debug("  Detected type: {}, size: {} bytes", layerType, content.length);
 
                     try {
+                        MultiLayerSVGRenderer.Layer layer = null;
                         if (layerType.equals("drill")) {
+                            log.debug("  Parsing as drill file...");
                             DrillDocument doc = drillParser.parse(contentStr);
-                            svg = drillRenderer.render(doc);
+                            layer = new MultiLayerSVGRenderer.Layer(name, doc);
+                            log.debug("  Drill parsed: {} operations", doc.getOperations().size());
                         } else if (layerType.equals("gerber")) {
+                            log.debug("  Parsing as Gerber file...");
                             GerberDocument doc = gerberParser.parse(contentStr);
-                            svg = svgRenderer.render(doc);
+                            layer = new MultiLayerSVGRenderer.Layer(name, doc);
+                            log.debug("  Gerber parsed: {} objects, {} apertures",
+                                doc.getObjects().size(), doc.getApertures().size());
+                        } else {
+                            log.debug("  Skipping unknown file type");
+                        }
+
+                        if (layer != null) {
+                            String color = getLayerColor(name);
+                            layer.setColor(color);
+                            layer.setOpacity(0.85);
+                            layers.add(layer);
+
+                            // Create layer info for JSON response
+                            String id = name.replaceAll("[^a-zA-Z0-9._-]", "_");
+                            layerInfos.add(new LayerInfo(name, id, color, layerType));
+
+                            long fileElapsed = System.currentTimeMillis() - fileStart;
+                            log.info("  Parsed {} in {}ms", name, fileElapsed);
                         }
                     } catch (Exception e) {
-                        System.err.println("Failed to parse " + name + ": " + e.getMessage());
-                    }
-
-                    if (svg != null && !svg.isEmpty()) {
-                        layers.put(name, svg);
+                        log.warn("Failed to parse {}: {}", name, e.getMessage());
+                        log.debug("Parse error details", e);
                     }
                 }
+                log.info("Processed {} files from ZIP", fileCount);
             }
 
-            return layers;
+            // Render all layers into a single multi-layer SVG
+            log.info("Rendering {} layers to SVG...", layers.size());
+            long renderStart = System.currentTimeMillis();
+            String svg = multiLayerRenderer.render(layers);
+            long renderElapsed = System.currentTimeMillis() - renderStart;
+            log.info("SVG rendering complete: {} chars in {}ms", svg.length(), renderElapsed);
+
+            return new ParseResult(layerInfos, svg);
+        }
+
+        private String getLayerColor(String filename) {
+            String lower = filename.toLowerCase();
+            for (Map.Entry<String, String> entry : LAYER_COLORS.entrySet()) {
+                if (lower.contains(entry.getKey())) {
+                    return entry.getValue();
+                }
+            }
+            return "#aaaaaa"; // default
         }
 
         private String detectLayerType(String filename, String content) {
@@ -154,13 +269,21 @@ public class GerberViewerServer {
 
             // Check by extension
             if (lower.endsWith(".drl") || lower.endsWith(".xln") ||
-                lower.endsWith(".exc") || lower.endsWith(".ncd")) {
-                return "drill";
+                lower.endsWith(".exc") || lower.endsWith(".ncd") ||
+                lower.endsWith(".txt")) {
+                // .txt files need content check
+                if (lower.endsWith(".txt")) {
+                    if (content.contains("M48") || content.contains("T01C") ||
+                        content.contains("METRIC") || content.contains("INCH")) {
+                        return "drill";
+                    }
+                } else {
+                    return "drill";
+                }
             }
 
-            // Check by content
-            if (content.contains("M48") || content.contains("METRIC") ||
-                content.contains("INCH") || content.contains("T01C")) {
+            // Check by content for drill
+            if (content.contains("M48") || content.contains("T01C")) {
                 return "drill";
             }
 
@@ -177,7 +300,8 @@ public class GerberViewerServer {
                 lower.endsWith(".gto") || lower.endsWith(".gbo") ||
                 lower.endsWith(".gtp") || lower.endsWith(".gbp") ||
                 lower.endsWith(".gm1") || lower.endsWith(".gko") ||
-                lower.endsWith(".g2") || lower.endsWith(".g3")) {
+                lower.endsWith(".g2") || lower.endsWith(".g3") ||
+                lower.endsWith(".g1")) {
                 return "gerber";
             }
 
@@ -440,19 +564,65 @@ public class GerberViewerServer {
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
+            background: rgba(22, 33, 62, 0.95);
+            padding: 32px 48px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid #0f3460;
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 48px;
+            height: 48px;
             border: 3px solid #333;
             border-top-color: #e94560;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            margin: 0 auto;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 16px;
+            font-size: 1rem;
+            color: #eee;
+        }
+
+        .loading-status {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #888;
+            min-height: 20px;
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            margin: 16px auto 0;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e94560, #ff6b8a);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-bar-indeterminate .progress-bar-fill {
+            width: 30%;
+            animation: indeterminate 1.5s ease-in-out infinite;
+        }
+
+        @keyframes indeterminate {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
         }
 
         .hidden {
@@ -500,7 +670,11 @@ public class GerberViewerServer {
             </div>
             <div class="loading hidden" id="loading">
                 <div class="spinner"></div>
-                <p style="margin-top: 12px">Parsing files...</p>
+                <div class="loading-text">Processing Gerber files</div>
+                <div class="loading-status" id="loading-status">Uploading...</div>
+                <div class="progress-bar progress-bar-indeterminate">
+                    <div class="progress-bar-fill" id="progress-fill"></div>
+                </div>
             </div>
             <div id="svg-container">
                 <div id="svg-content"></div>
@@ -509,37 +683,9 @@ public class GerberViewerServer {
     </div>
 
     <script>
-        // Layer colors for different file types
-        const LAYER_COLORS = {
-            // Copper layers
-            'gtl': '#e94560', 'top': '#e94560', 'f_cu': '#e94560',
-            'gbl': '#4169e1', 'bottom': '#4169e1', 'b_cu': '#4169e1',
-            'g2': '#ff8c00', 'g3': '#9932cc', 'in1': '#ff8c00', 'in2': '#9932cc',
-
-            // Solder mask
-            'gts': '#00aa00', 'gbs': '#006600',
-            'f_mask': '#00aa00', 'b_mask': '#006600',
-
-            // Silkscreen
-            'gto': '#ffffff', 'gbo': '#cccccc',
-            'f_silks': '#ffffff', 'b_silks': '#cccccc',
-
-            // Paste
-            'gtp': '#888888', 'gbp': '#666666',
-            'f_paste': '#888888', 'b_paste': '#666666',
-
-            // Outline/Edge
-            'gko': '#ffff00', 'gm1': '#ffff00', 'edge': '#ffff00',
-
-            // Drill
-            'drl': '#00ffff', 'xln': '#00ffff', 'drill': '#00ffff',
-
-            // Default
-            'default': '#aaaaaa'
-        };
-
         // State
-        let layers = [];
+        let layers = [];       // Layer metadata from server
+        let combinedSvg = '';  // The multi-layer SVG string
         let scale = 1;
         let panX = 0;
         let panY = 0;
@@ -588,29 +734,76 @@ public class GerberViewerServer {
                 return;
             }
 
+            const loadingStatus = document.getElementById('loading-status');
+            const progressBar = document.querySelector('.progress-bar');
+            const progressFill = document.getElementById('progress-fill');
+
             dropZone.classList.add('hidden');
             loading.classList.remove('hidden');
+            loadingStatus.textContent = 'Uploading ' + file.name + '...';
+            progressBar.classList.add('progress-bar-indeterminate');
 
             try {
-                const response = await fetch('/api/parse', {
-                    method: 'POST',
-                    body: file
-                });
+                // Use XMLHttpRequest for upload progress
+                const data = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
 
-                const data = await response.json();
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            loadingStatus.textContent = 'Uploading... ' + percent + '%';
+                            progressBar.classList.remove('progress-bar-indeterminate');
+                            progressFill.style.width = percent + '%';
+                        }
+                    });
+
+                    xhr.upload.addEventListener('load', () => {
+                        loadingStatus.textContent = 'Parsing Gerber and drill files...';
+                        progressBar.classList.add('progress-bar-indeterminate');
+                        progressFill.style.width = '0%';
+                    });
+
+                    xhr.addEventListener('load', () => {
+                        if (xhr.status === 200) {
+                            try {
+                                resolve(JSON.parse(xhr.responseText));
+                            } catch (e) {
+                                reject(new Error('Invalid response from server'));
+                            }
+                        } else {
+                            reject(new Error('Server error: ' + xhr.status));
+                        }
+                    });
+
+                    xhr.addEventListener('error', () => {
+                        reject(new Error('Network error'));
+                    });
+
+                    xhr.open('POST', '/api/parse');
+                    xhr.send(file);
+                });
 
                 if (data.error) {
                     throw new Error(data.error);
                 }
 
+                loadingStatus.textContent = 'Rendering ' + data.layers.length + ' layers...';
+
+                // Store layer metadata with visibility state
                 layers = data.layers.map((layer, index) => ({
                     ...layer,
                     visible: true,
-                    color: getLayerColor(layer.name),
                     index
                 }));
 
-                renderLayers();
+                // Store the combined SVG
+                combinedSvg = data.svg;
+
+                // Small delay to show the rendering message
+                await new Promise(r => setTimeout(r, 100));
+
+                // Render the SVG
+                renderSvg();
                 renderLayerList();
                 fitToView();
             } catch (error) {
@@ -618,18 +811,9 @@ public class GerberViewerServer {
                 dropZone.classList.remove('hidden');
             } finally {
                 loading.classList.add('hidden');
+                progressBar.classList.remove('progress-bar-indeterminate');
+                progressFill.style.width = '0%';
             }
-        }
-
-        // Get color for layer based on filename
-        function getLayerColor(name) {
-            const lower = name.toLowerCase();
-            for (const [key, color] of Object.entries(LAYER_COLORS)) {
-                if (lower.includes(key)) {
-                    return color;
-                }
-            }
-            return LAYER_COLORS.default;
         }
 
         // Render layer list in sidebar
@@ -648,103 +832,44 @@ public class GerberViewerServer {
             `).join('');
         }
 
-        // Toggle layer visibility
+        // Toggle layer visibility - just update display attribute on layer group
         function toggleLayer(index) {
             layers[index].visible = !layers[index].visible;
-            renderLayers();
+            const layerId = layers[index].id;
+            const layerGroup = svgContent.querySelector(`#${CSS.escape(layerId)}`);
+            if (layerGroup) {
+                layerGroup.setAttribute('display', layers[index].visible ? 'inline' : 'none');
+            }
             renderLayerList();
         }
 
-        // Render visible layers to SVG container
-        function renderLayers() {
-            const visibleLayers = layers.filter(l => l.visible);
-
-            if (visibleLayers.length === 0) {
+        // Render the combined SVG
+        function renderSvg() {
+            if (!combinedSvg) {
                 svgContent.innerHTML = '';
                 return;
             }
 
-            // Parse SVGs and find combined bounds
-            const parsedLayers = visibleLayers.map(layer => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(layer.svg, 'image/svg+xml');
-                const svg = doc.querySelector('svg');
+            // Parse and insert the multi-layer SVG
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(combinedSvg, 'image/svg+xml');
+            const svg = doc.querySelector('svg');
+
+            if (svg) {
+                // Set dimensions based on viewBox
                 const viewBox = svg.getAttribute('viewBox');
-                return { layer, svg, viewBox };
-            });
-
-            // Calculate combined viewBox
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            parsedLayers.forEach(({ viewBox }) => {
                 if (viewBox) {
-                    const [x, y, w, h] = viewBox.split(' ').map(Number);
-                    minX = Math.min(minX, x);
-                    minY = Math.min(minY, y);
-                    maxX = Math.max(maxX, x + w);
-                    maxY = Math.max(maxY, y + h);
+                    const [, , w, h] = viewBox.split(' ').map(Number);
+                    svg.setAttribute('width', w + 'mm');
+                    svg.setAttribute('height', h + 'mm');
                 }
-            });
+                svg.style.overflow = 'visible';
 
-            const width = maxX - minX;
-            const height = maxY - minY;
+                svgContent.innerHTML = '';
+                svgContent.appendChild(svg);
+            }
 
-            // Create combined SVG
-            const combinedSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            combinedSvg.setAttribute('viewBox', `${minX} ${minY} ${width} ${height}`);
-            combinedSvg.setAttribute('width', width + 'mm');
-            combinedSvg.setAttribute('height', height + 'mm');
-            combinedSvg.style.overflow = 'visible';
-
-            // Add each layer
-            parsedLayers.forEach(({ layer, svg }) => {
-                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                g.setAttribute('data-layer', layer.name);
-
-                // Copy children from parsed SVG
-                while (svg.firstChild) {
-                    const child = svg.firstChild;
-                    // Apply color to shapes
-                    colorizeElement(child, layer.color);
-                    g.appendChild(child);
-                }
-
-                combinedSvg.appendChild(g);
-            });
-
-            svgContent.innerHTML = '';
-            svgContent.appendChild(combinedSvg);
             updateTransform();
-        }
-
-        // Apply color to SVG elements
-        function colorizeElement(element, color) {
-            if (element.nodeType !== 1) return;
-
-            const tagName = element.tagName.toLowerCase();
-            if (['circle', 'rect', 'path', 'polygon', 'line', 'ellipse'].includes(tagName)) {
-                const fill = element.getAttribute('fill');
-                const stroke = element.getAttribute('stroke');
-
-                if (fill && fill !== 'none' && fill !== 'white' && fill !== '#ffffff') {
-                    element.setAttribute('fill', color);
-                }
-                if (stroke && stroke !== 'none' && stroke !== 'white' && stroke !== '#ffffff') {
-                    element.setAttribute('stroke', color);
-                }
-                // Handle class-based styling
-                if (element.classList.contains('dark') || element.classList.contains('drill')) {
-                    element.style.fill = color;
-                    element.style.stroke = color;
-                }
-                if (element.classList.contains('slot')) {
-                    element.style.stroke = color;
-                }
-            }
-
-            // Recurse into children
-            for (const child of element.children) {
-                colorizeElement(child, color);
-            }
         }
 
         // Pan and zoom handlers

@@ -84,7 +84,7 @@ public class VectorLinePrimitive implements MacroPrimitive {
                 "M %.6f %.6f L %.6f %.6f L %.6f %.6f L %.6f %.6f Z",
                 cornersX[0], cornersY[0], cornersX[1], cornersY[1],
                 cornersX[2], cornersY[2], cornersX[3], cornersY[3]);
-            return String.format("<path d=\"%s\" fill=\"%s\"/>", pathData, fill);
+            return String.format(Locale.US, "<path d=\"%s\" fill=\"%s\"/>", pathData, fill);
         } else {
             // Exact mode: use native SVG polygon element
             StringBuilder points = new StringBuilder();
@@ -92,7 +92,7 @@ public class VectorLinePrimitive implements MacroPrimitive {
                 if (i > 0) points.append(" ");
                 points.append(String.format(Locale.US, "%.6f,%.6f", cornersX[i], cornersY[i]));
             }
-            return String.format("<polygon points=\"%s\" fill=\"%s\"/>", points, fill);
+            return String.format(Locale.US, "<polygon points=\"%s\" fill=\"%s\"/>", points, fill);
         }
     }
 

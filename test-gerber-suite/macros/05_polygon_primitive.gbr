@@ -1,0 +1,47 @@
+G04 Test: Macro polygon primitive (code 5)*
+G04 Tests macro aperture with regular polygon primitives*
+%FSLAX26Y26*%
+%MOMM*%
+G04 Triangle at origin*
+%AMPoly3*
+5,1,3,0,0,2.0,0*%
+G04 Square at origin*
+%AMPoly4*
+5,1,4,0,0,2.0,0*%
+G04 Pentagon at origin*
+%AMPoly5*
+5,1,5,0,0,2.0,0*%
+G04 Hexagon at origin*
+%AMPoly6*
+5,1,6,0,0,2.0,0*%
+G04 Octagon at origin*
+%AMPoly8*
+5,1,8,0,0,2.0,0*%
+G04 Rotated hexagon (30 degrees)*
+%AMPoly6R*
+5,1,6,0,0,2.0,30*%
+G04 Offset pentagon*
+%AMPoly5Off*
+5,1,5,0.3,0.3,1.5,0*%
+%ADD10Poly3*%
+%ADD11Poly4*%
+%ADD12Poly5*%
+%ADD13Poly6*%
+%ADD14Poly8*%
+%ADD15Poly6R*%
+%ADD16Poly5Off*%
+D10*
+X2000000Y2000000D03*
+D11*
+X5500000Y2000000D03*
+D12*
+X9000000Y2000000D03*
+D13*
+X12500000Y2000000D03*
+D14*
+X2000000Y5500000D03*
+D15*
+X5500000Y5500000D03*
+D16*
+X9000000Y5500000D03*
+M02*

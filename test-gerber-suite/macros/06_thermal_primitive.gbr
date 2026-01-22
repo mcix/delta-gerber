@@ -1,0 +1,47 @@
+G04 Test: Macro thermal primitive (code 7)*
+G04 Tests macro aperture with thermal relief primitives*
+%FSLAX26Y26*%
+%MOMM*%
+G04 Basic thermal at origin*
+%AMTherm1*
+7,0,0,2.0,1.2,0.3,0*%
+G04 Thermal with narrower gap*
+%AMTherm2*
+7,0,0,2.0,1.2,0.15,0*%
+G04 Thermal with wider gap*
+%AMTherm3*
+7,0,0,2.0,1.2,0.5,0*%
+G04 Thermal rotated 45 degrees*
+%AMThermR45*
+7,0,0,2.0,1.2,0.3,45*%
+G04 Thermal rotated 22.5 degrees*
+%AMThermR22*
+7,0,0,2.0,1.2,0.3,22.5*%
+G04 Small thermal*
+%AMThermSm*
+7,0,0,1.5,0.8,0.2,0*%
+G04 Large thermal*
+%AMThermLg*
+7,0,0,3.0,2.0,0.4,0*%
+%ADD10Therm1*%
+%ADD11Therm2*%
+%ADD12Therm3*%
+%ADD13ThermR45*%
+%ADD14ThermR22*%
+%ADD15ThermSm*%
+%ADD16ThermLg*%
+D10*
+X2500000Y2500000D03*
+D11*
+X6500000Y2500000D03*
+D12*
+X10500000Y2500000D03*
+D13*
+X2500000Y6500000D03*
+D14*
+X6500000Y6500000D03*
+D15*
+X10500000Y6500000D03*
+D16*
+X14500000Y6500000D03*
+M02*

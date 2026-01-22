@@ -1,0 +1,34 @@
+G04 Test: File attributes (TF)*
+G04 Tests standard file attributes*
+G04 Based on Gerber spec section 5.2*
+%FSLAX26Y26*%
+%MOMM*%
+G04 File function attribute - indicates this is a top copper layer*
+%TF.FileFunction,Copper,L1,Top*%
+G04 File polarity - positive*
+%TF.FilePolarity,Positive*%
+G04 Part type - single PCB*
+%TF.Part,Single*%
+G04 Generation software*
+%TF.GenerationSoftware,TestSuite,GerberTestGenerator,1.0*%
+G04 Creation date (ISO 8601 format)*
+%TF.CreationDate,2024-01-15T10:30:00+01:00*%
+G04 Project identification*
+%TF.ProjectId,TestProject,ABC123,RevA*%
+G04 Same coordinates indicator*
+%TF.SameCoordinates,Original*%
+G04 User-defined file attribute*
+%TF.MyCustomAttribute,value1,value2*%
+G04 Define simple apertures and draw something*
+%ADD10C,0.5*%
+%ADD11R,1.0X0.6*%
+D10*
+G01*
+X2000000Y2000000D02*
+X8000000Y2000000D01*
+Y8000000D01*
+X2000000D01*
+Y2000000D01*
+D11*
+X5000000Y5000000D03*
+M02*

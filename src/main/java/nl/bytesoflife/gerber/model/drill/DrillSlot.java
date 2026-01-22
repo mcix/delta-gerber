@@ -49,10 +49,10 @@ public class DrillSlot extends DrillOperation {
 
     @Override
     public String toSvg() {
-        // Render slot as a line with round caps
-        return String.format(
-            "<line x1=\"%.6f\" y1=\"%.6f\" x2=\"%.6f\" y2=\"%.6f\" " +
-            "stroke-width=\"%.6f\" stroke-linecap=\"round\" class=\"slot\"/>",
+        // Render slot as a path with M/L commands (line with round caps)
+        return String.format(java.util.Locale.US,
+            "<path d=\"M %.6f %.6f L %.6f %.6f\" " +
+            "stroke=\"currentColor\" stroke-width=\"%.6f\" stroke-linecap=\"round\" fill=\"none\"/>",
             startX, startY, endX, endY, tool.getDiameter());
     }
 

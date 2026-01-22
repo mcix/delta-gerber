@@ -1,0 +1,367 @@
+Dcode Report - 09/29/22@09:16
+FAB 3000 V8 [Professional] - job for Windows
+Version 8.3.44 (64-bit)
+
+Units: Millimeters
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.G1
+=========================================
+Dcode 125  Custom  ROUNDEDRECTD125  ( Flashes=4, Traces=0 )
+Dcode 126  Circle  0.650  ( Flashes=4, Traces=0 )
+Dcode 133  Oblong  1.800:1.500  ( Flashes=1, Traces=0 )
+Dcode 134  Circle  1.950  ( Flashes=1, Traces=0 )
+Dcode 136  Circle  1.050  ( Flashes=3, Traces=0 )
+Dcode 137  Circle  1.420  ( Flashes=3, Traces=0 )
+Dcode 138  Circle  3.450  ( Flashes=6, Traces=0 )
+Dcode 142  Circle  0.800  ( Flashes=194, Traces=0 )
+Dcode 144  Circle  0.500  ( Flashes=10, Traces=0 )
+---------------------------
+Layer Width:  159.9999 
+Layer Height:  56.0001 
+Flashes:  226 
+Traces:  0 
+Polygons:  198 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.G2
+=========================================
+Dcode 136  Circle  1.050  ( Flashes=1, Traces=0 )
+Dcode 142  Circle  0.800  ( Flashes=26, Traces=0 )
+---------------------------
+Layer Width:  159.9999 
+Layer Height:  56.0001 
+Flashes:  27 
+Traces:  0 
+Polygons:  289 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.GBL
+=========================================
+Dcode 10  Circle  0.254  ( Flashes=0, Traces=228 )
+Dcode 13  Circle  0.500  ( Flashes=0, Traces=8 )
+Dcode 125  Custom  ROUNDEDRECTD125  ( Flashes=4, Traces=0 )
+Dcode 126  Circle  0.650  ( Flashes=14, Traces=0 )
+Dcode 128  Circle  0.400  ( Flashes=0, Traces=15 )
+Dcode 129  Circle  1.000  ( Flashes=0, Traces=24 )
+Dcode 130  Circle  0.350  ( Flashes=0, Traces=5 )
+Dcode 133  Oblong  1.800:1.500  ( Flashes=4, Traces=0 )
+Dcode 134  Circle  1.950  ( Flashes=5, Traces=0 )
+Dcode 135  Rectangle  1.950:1.950  ( Flashes=1, Traces=0 )
+Dcode 136  Circle  1.050  ( Flashes=10, Traces=0 )
+Dcode 137  Circle  1.420  ( Flashes=12, Traces=0 )
+Dcode 138  Circle  3.450  ( Flashes=6, Traces=0 )
+Dcode 139  Circle  2.800  ( Flashes=6, Traces=0 )
+Dcode 140  Circle  4.000  ( Flashes=1, Traces=0 )
+Dcode 141  Circle  3.200  ( Flashes=4, Traces=0 )
+Dcode 142  Circle  0.800  ( Flashes=291, Traces=0 )
+Dcode 143  Circle  1.400  ( Flashes=4, Traces=0 )
+Dcode 144  Circle  0.500  ( Flashes=12, Traces=0 )
+---------------------------
+Layer Width:  159.9999 
+Layer Height:  56.0001 
+Flashes:  374 
+Traces:  280 
+Polygons:  172 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.GBS
+=========================================
+Dcode 115  Oblong  2.003:1.703  ( Flashes=4, Traces=0 )
+Dcode 116  Circle  0.203  ( Flashes=4, Traces=0 )
+Dcode 117  Circle  2.153  ( Flashes=5, Traces=0 )
+Dcode 118  Rectangle  2.153:2.153  ( Flashes=1, Traces=0 )
+Dcode 119  Circle  1.253  ( Flashes=10, Traces=0 )
+Dcode 120  Circle  1.623  ( Flashes=12, Traces=0 )
+Dcode 121  Circle  3.653  ( Flashes=6, Traces=0 )
+Dcode 122  Circle  3.003  ( Flashes=6, Traces=0 )
+Dcode 123  Circle  4.203  ( Flashes=1, Traces=0 )
+Dcode 124  Circle  3.403  ( Flashes=4, Traces=0 )
+Dcode 125  Custom  ROUNDEDRECTD125  ( Flashes=4, Traces=0 )
+Dcode 126  Circle  0.650  ( Flashes=14, Traces=0 )
+Dcode 127  Circle  0.200  ( Flashes=12, Traces=0 )
+---------------------------
+Layer Width:  153.4030 
+Layer Height:  52.3265 
+Flashes:  83 
+Traces:  0 
+Polygons:  0 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.GM1
+=========================================
+Dcode 12  Circle  0.200  ( Flashes=0, Traces=4 )
+Dcode 145  Circle  0.178  ( Flashes=0, Traces=9 )
+---------------------------
+Layer Width:  53.8936 
+Layer Height:  11.3394 
+Flashes:  0 
+Traces:  13 
+Polygons:  0 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.GTL
+=========================================
+Dcode 10  Circle  0.254  ( Flashes=37, Traces=1336 )
+Dcode 13  Circle  0.500  ( Flashes=0, Traces=23 )
+Dcode 14  Circle  0.600  ( Flashes=0, Traces=6 )
+Dcode 22  Rectangle  1.000:0.900  ( Flashes=12, Traces=0 )
+Dcode 23  Rectangle  0.800:1.000  ( Flashes=8, Traces=0 )
+Dcode 24  Rectangle  1.550:0.650  ( Flashes=16, Traces=0 )
+Dcode 25  Rectangle  3.850:3.850  ( Flashes=1, Traces=0 )
+Dcode 26  Circle  0.215  ( Flashes=2, Traces=0 )
+Dcode 27  Custom  ROUNDEDRECTD27  ( Flashes=17, Traces=0 )
+Dcode 28  Custom  ROUNDEDRECTD28  ( Flashes=18, Traces=0 )
+Dcode 29  Rectangle  0.900:0.950  ( Flashes=32, Traces=0 )
+Dcode 30  Rectangle  0.850:0.900  ( Flashes=18, Traces=0 )
+Dcode 31  Custom  ROUNDEDRECTD31  ( Flashes=18, Traces=0 )
+Dcode 32  Custom  ROUNDEDRECTD32  ( Flashes=17, Traces=0 )
+Dcode 33  Rectangle  3.850:3.850  ( Flashes=1, Traces=0 )
+Dcode 34  Rectangle  0.900:0.850  ( Flashes=28, Traces=0 )
+Dcode 35  Rectangle  2.250:1.500  ( Flashes=2, Traces=0 )
+Dcode 36  Oblong  0.250:0.500  ( Flashes=16, Traces=0 )
+Dcode 37  Rectangle  0.950:0.900  ( Flashes=26, Traces=0 )
+Dcode 38  Custom  ROUNDEDRECTD38  ( Flashes=8, Traces=0 )
+Dcode 39  Diamond  1.343:1.343  ( Flashes=6, Traces=0 )
+Dcode 40  Custom  ROTATEDRECTD40  ( Flashes=2, Traces=0 )
+Dcode 41  Rectangle  2.500:2.300  ( Flashes=2, Traces=0 )
+Dcode 42  Rectangle  0.600:0.430  ( Flashes=16, Traces=0 )
+Dcode 43  Custom  ROTATEDRECTD43  ( Flashes=2, Traces=0 )
+Dcode 44  Custom  ROTATEDRECTD44  ( Flashes=2, Traces=0 )
+Dcode 45  Rectangle  0.340:0.650  ( Flashes=8, Traces=0 )
+Dcode 46  Rectangle  0.340:0.800  ( Flashes=8, Traces=0 )
+Dcode 47  Custom  ROUNDEDRECTD47  ( Flashes=6, Traces=0 )
+Dcode 48  Rectangle  1.800:1.250  ( Flashes=6, Traces=0 )
+Dcode 49  Rectangle  1.270:0.762  ( Flashes=16, Traces=0 )
+Dcode 50  Rectangle  1.100:1.000  ( Flashes=6, Traces=0 )
+Dcode 51  Rectangle  0.950:0.950  ( Flashes=6, Traces=0 )
+Dcode 52  Rectangle  0.700:0.450  ( Flashes=5, Traces=0 )
+Dcode 53  Rectangle  1.500:0.400  ( Flashes=22, Traces=0 )
+Dcode 54  Rectangle  1.500:0.800  ( Flashes=4, Traces=0 )
+Dcode 55  Rectangle  0.600:2.200  ( Flashes=30, Traces=0 )
+Dcode 56  Rectangle  1.800:2.600  ( Flashes=2, Traces=0 )
+Dcode 57  Custom  ROUNDEDRECTD57  ( Flashes=4, Traces=0 )
+Dcode 58  Custom  ROUNDEDRECTD58  ( Flashes=2, Traces=0 )
+Dcode 59  Rectangle  0.950:0.950  ( Flashes=12, Traces=0 )
+Dcode 60  Rectangle  1.400:1.200  ( Flashes=4, Traces=0 )
+Dcode 61  Rectangle  1.200:1.400  ( Flashes=2, Traces=0 )
+Dcode 62  Custom  ROUNDEDRECTD62  ( Flashes=2, Traces=0 )
+Dcode 63  Custom  ROUNDEDRECTD63  ( Flashes=20, Traces=0 )
+Dcode 64  Custom  ROUNDEDRECTD64  ( Flashes=1, Traces=0 )
+Dcode 65  Custom  OVALD65  ( Flashes=32, Traces=0 )
+Dcode 66  Custom  OVALD66  ( Flashes=32, Traces=0 )
+Dcode 67  Diamond  1.343:1.343  ( Flashes=2, Traces=0 )
+Dcode 68  Circle  4.275  ( Flashes=2, Traces=0 )
+Dcode 69  Rectangle  3.600:1.300  ( Flashes=2, Traces=0 )
+Dcode 70  Rectangle  0.200:1.000  ( Flashes=2, Traces=0 )
+Dcode 71  Rectangle  0.300:1.200  ( Flashes=12, Traces=0 )
+Dcode 72  Circle  1.200  ( Flashes=0, Traces=1 )
+Dcode 104  Rectangle  1.200:1.200  ( Flashes=4, Traces=0 )
+Dcode 107  Rectangle  1.200:1.200  ( Flashes=2, Traces=0 )
+Dcode 125  Custom  ROUNDEDRECTD125  ( Flashes=4, Traces=0 )
+Dcode 126  Circle  0.650  ( Flashes=14, Traces=0 )
+Dcode 128  Circle  0.400  ( Flashes=0, Traces=43 )
+Dcode 129  Circle  1.000  ( Flashes=0, Traces=39 )
+Dcode 130  Circle  0.350  ( Flashes=0, Traces=37 )
+Dcode 131  Circle  0.300  ( Flashes=0, Traces=1 )
+Dcode 132  Rectangle  2.290:1.710  ( Flashes=2, Traces=0 )
+Dcode 133  Oblong  1.800:1.500  ( Flashes=4, Traces=0 )
+Dcode 134  Circle  1.950  ( Flashes=5, Traces=0 )
+Dcode 135  Rectangle  1.950:1.950  ( Flashes=1, Traces=0 )
+Dcode 136  Circle  1.050  ( Flashes=10, Traces=0 )
+Dcode 137  Circle  1.420  ( Flashes=12, Traces=0 )
+Dcode 138  Circle  3.450  ( Flashes=6, Traces=0 )
+Dcode 139  Circle  2.800  ( Flashes=6, Traces=0 )
+Dcode 140  Circle  4.000  ( Flashes=1, Traces=0 )
+Dcode 141  Circle  3.200  ( Flashes=4, Traces=0 )
+Dcode 142  Circle  0.800  ( Flashes=291, Traces=0 )
+Dcode 143  Circle  1.400  ( Flashes=4, Traces=0 )
+Dcode 144  Circle  0.500  ( Flashes=12, Traces=0 )
+---------------------------
+Layer Width:  159.9999 
+Layer Height:  56.0001 
+Flashes:  939 
+Traces:  1486 
+Polygons:  411 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.GTO
+=========================================
+Dcode 10  Circle  0.254  ( Flashes=12, Traces=198 )
+Dcode 11  Circle  0.250  ( Flashes=17, Traces=17 )
+Dcode 12  Circle  0.200  ( Flashes=10, Traces=189 )
+Dcode 13  Circle  0.500  ( Flashes=2, Traces=2 )
+Dcode 14  Circle  0.600  ( Flashes=1, Traces=1 )
+Dcode 15  Circle  0.100  ( Flashes=0, Traces=2627 )
+Dcode 16  Circle  0.127  ( Flashes=0, Traces=4 )
+Dcode 17  Circle  0.150  ( Flashes=0, Traces=251 )
+---------------------------
+Layer Width:  157.8997 
+Layer Height:  62.2770 
+Flashes:  42 
+Traces:  3289 
+Polygons:  4 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.GTP
+=========================================
+Dcode 18  Rectangle  2.435:2.435  ( Flashes=1, Traces=0 )
+Dcode 19  Rectangle  2.435:2.435  ( Flashes=1, Traces=0 )
+Dcode 20  Rectangle  1.100:1.100  ( Flashes=4, Traces=0 )
+Dcode 21  Rectangle  1.100:1.100  ( Flashes=2, Traces=0 )
+Dcode 22  Rectangle  1.000:0.900  ( Flashes=12, Traces=0 )
+Dcode 23  Rectangle  0.800:1.000  ( Flashes=8, Traces=0 )
+Dcode 24  Rectangle  1.550:0.650  ( Flashes=16, Traces=0 )
+Dcode 25  Rectangle  3.850:3.850  ( Flashes=1, Traces=0 )
+Dcode 26  Circle  0.215  ( Flashes=2, Traces=0 )
+Dcode 27  Custom  ROUNDEDRECTD27  ( Flashes=17, Traces=0 )
+Dcode 28  Custom  ROUNDEDRECTD28  ( Flashes=18, Traces=0 )
+Dcode 29  Rectangle  0.900:0.950  ( Flashes=32, Traces=0 )
+Dcode 30  Rectangle  0.850:0.900  ( Flashes=18, Traces=0 )
+Dcode 31  Custom  ROUNDEDRECTD31  ( Flashes=18, Traces=0 )
+Dcode 32  Custom  ROUNDEDRECTD32  ( Flashes=17, Traces=0 )
+Dcode 33  Rectangle  3.850:3.850  ( Flashes=1, Traces=0 )
+Dcode 34  Rectangle  0.900:0.850  ( Flashes=28, Traces=0 )
+Dcode 35  Rectangle  2.250:1.500  ( Flashes=2, Traces=0 )
+Dcode 36  Oblong  0.250:0.500  ( Flashes=16, Traces=0 )
+Dcode 37  Rectangle  0.950:0.900  ( Flashes=26, Traces=0 )
+Dcode 38  Custom  ROUNDEDRECTD38  ( Flashes=8, Traces=0 )
+Dcode 39  Diamond  1.343:1.343  ( Flashes=6, Traces=0 )
+Dcode 40  Custom  ROTATEDRECTD40  ( Flashes=2, Traces=0 )
+Dcode 41  Rectangle  2.500:2.300  ( Flashes=2, Traces=0 )
+Dcode 42  Rectangle  0.600:0.430  ( Flashes=16, Traces=0 )
+Dcode 43  Custom  ROTATEDRECTD43  ( Flashes=2, Traces=0 )
+Dcode 44  Custom  ROTATEDRECTD44  ( Flashes=2, Traces=0 )
+Dcode 45  Rectangle  0.340:0.650  ( Flashes=8, Traces=0 )
+Dcode 46  Rectangle  0.340:0.800  ( Flashes=8, Traces=0 )
+Dcode 47  Custom  ROUNDEDRECTD47  ( Flashes=6, Traces=0 )
+Dcode 48  Rectangle  1.800:1.250  ( Flashes=6, Traces=0 )
+Dcode 49  Rectangle  1.270:0.762  ( Flashes=16, Traces=0 )
+Dcode 50  Rectangle  1.100:1.000  ( Flashes=6, Traces=0 )
+Dcode 51  Rectangle  0.950:0.950  ( Flashes=6, Traces=0 )
+Dcode 52  Rectangle  0.700:0.450  ( Flashes=5, Traces=0 )
+Dcode 53  Rectangle  1.500:0.400  ( Flashes=22, Traces=0 )
+Dcode 54  Rectangle  1.500:0.800  ( Flashes=4, Traces=0 )
+Dcode 55  Rectangle  0.600:2.200  ( Flashes=30, Traces=0 )
+Dcode 56  Rectangle  1.800:2.600  ( Flashes=2, Traces=0 )
+Dcode 57  Custom  ROUNDEDRECTD57  ( Flashes=4, Traces=0 )
+Dcode 58  Custom  ROUNDEDRECTD58  ( Flashes=2, Traces=0 )
+Dcode 59  Rectangle  0.950:0.950  ( Flashes=12, Traces=0 )
+Dcode 60  Rectangle  1.400:1.200  ( Flashes=4, Traces=0 )
+Dcode 61  Rectangle  1.200:1.400  ( Flashes=2, Traces=0 )
+Dcode 62  Custom  ROUNDEDRECTD62  ( Flashes=2, Traces=0 )
+Dcode 63  Custom  ROUNDEDRECTD63  ( Flashes=20, Traces=0 )
+Dcode 64  Custom  ROUNDEDRECTD64  ( Flashes=1, Traces=0 )
+Dcode 65  Custom  OVALD65  ( Flashes=32, Traces=0 )
+Dcode 66  Custom  OVALD66  ( Flashes=32, Traces=0 )
+Dcode 67  Diamond  1.343:1.343  ( Flashes=2, Traces=0 )
+Dcode 68  Circle  4.275  ( Flashes=2, Traces=0 )
+Dcode 69  Rectangle  3.600:1.300  ( Flashes=2, Traces=0 )
+Dcode 70  Rectangle  0.200:1.000  ( Flashes=2, Traces=0 )
+Dcode 71  Rectangle  0.300:1.200  ( Flashes=12, Traces=0 )
+Dcode 72  Circle  1.200  ( Flashes=0, Traces=1 )
+Dcode 73  Rectangle  1.890:1.310  ( Flashes=2, Traces=0 )
+---------------------------
+Layer Width:  155.8909 
+Layer Height:  53.4698 
+Flashes:  530 
+Traces:  1 
+Polygons:  14 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.GTS
+=========================================
+Dcode 25  Rectangle  3.850:3.850  ( Flashes=1, Traces=0 )
+Dcode 26  Circle  0.215  ( Flashes=2, Traces=0 )
+Dcode 27  Custom  ROUNDEDRECTD27  ( Flashes=17, Traces=0 )
+Dcode 28  Custom  ROUNDEDRECTD28  ( Flashes=18, Traces=0 )
+Dcode 31  Custom  ROUNDEDRECTD31  ( Flashes=18, Traces=0 )
+Dcode 32  Custom  ROUNDEDRECTD32  ( Flashes=17, Traces=0 )
+Dcode 33  Rectangle  3.850:3.850  ( Flashes=1, Traces=0 )
+Dcode 41  Rectangle  2.500:2.300  ( Flashes=2, Traces=0 )
+Dcode 49  Rectangle  1.270:0.762  ( Flashes=16, Traces=0 )
+Dcode 68  Circle  4.275  ( Flashes=2, Traces=0 )
+Dcode 70  Rectangle  0.200:1.000  ( Flashes=2, Traces=0 )
+Dcode 71  Rectangle  0.300:1.200  ( Flashes=12, Traces=0 )
+Dcode 72  Circle  1.200  ( Flashes=0, Traces=1 )
+Dcode 74  Rectangle  1.203:1.103  ( Flashes=12, Traces=0 )
+Dcode 75  Rectangle  1.003:1.203  ( Flashes=8, Traces=0 )
+Dcode 76  Rectangle  1.753:0.853  ( Flashes=16, Traces=0 )
+Dcode 77  Rectangle  1.103:1.153  ( Flashes=32, Traces=0 )
+Dcode 78  Rectangle  1.053:1.103  ( Flashes=18, Traces=0 )
+Dcode 79  Rectangle  1.103:1.053  ( Flashes=28, Traces=0 )
+Dcode 80  Rectangle  2.453:1.703  ( Flashes=2, Traces=0 )
+Dcode 81  Oblong  0.453:0.703  ( Flashes=16, Traces=0 )
+Dcode 82  Rectangle  1.153:1.103  ( Flashes=26, Traces=0 )
+Dcode 83  Custom  ROUNDEDRECTD83  ( Flashes=8, Traces=0 )
+Dcode 84  Diamond  1.631:1.631  ( Flashes=6, Traces=0 )
+Dcode 85  Custom  ROTATEDRECTD85  ( Flashes=2, Traces=0 )
+Dcode 86  Rectangle  0.700:0.530  ( Flashes=16, Traces=0 )
+Dcode 87  Custom  ROTATEDRECTD87  ( Flashes=2, Traces=0 )
+Dcode 88  Custom  ROTATEDRECTD88  ( Flashes=2, Traces=0 )
+Dcode 89  Rectangle  0.543:0.853  ( Flashes=8, Traces=0 )
+Dcode 90  Rectangle  0.543:1.003  ( Flashes=8, Traces=0 )
+Dcode 91  Custom  ROUNDEDRECTD91  ( Flashes=6, Traces=0 )
+Dcode 92  Rectangle  2.003:1.453  ( Flashes=6, Traces=0 )
+Dcode 93  Rectangle  1.303:1.203  ( Flashes=6, Traces=0 )
+Dcode 94  Rectangle  1.153:1.153  ( Flashes=6, Traces=0 )
+Dcode 95  Rectangle  0.800:0.550  ( Flashes=5, Traces=0 )
+Dcode 96  Rectangle  1.703:0.603  ( Flashes=22, Traces=0 )
+Dcode 97  Rectangle  1.703:1.003  ( Flashes=4, Traces=0 )
+Dcode 98  Rectangle  0.803:2.403  ( Flashes=30, Traces=0 )
+Dcode 99  Rectangle  2.003:2.803  ( Flashes=2, Traces=0 )
+Dcode 100  Custom  ROUNDEDRECTD100  ( Flashes=4, Traces=0 )
+Dcode 101  Custom  ROUNDEDRECTD101  ( Flashes=2, Traces=0 )
+Dcode 102  Rectangle  1.153:1.153  ( Flashes=12, Traces=0 )
+Dcode 103  Rectangle  1.603:1.403  ( Flashes=4, Traces=0 )
+Dcode 104  Rectangle  1.200:1.200  ( Flashes=4, Traces=0 )
+Dcode 105  Rectangle  1.403:1.603  ( Flashes=2, Traces=0 )
+Dcode 106  Custom  ROUNDEDRECTD106  ( Flashes=2, Traces=0 )
+Dcode 107  Rectangle  1.200:1.200  ( Flashes=2, Traces=0 )
+Dcode 108  Custom  ROUNDEDRECTD108  ( Flashes=20, Traces=0 )
+Dcode 109  Custom  ROUNDEDRECTD109  ( Flashes=1, Traces=0 )
+Dcode 110  Custom  OVALD110  ( Flashes=32, Traces=0 )
+Dcode 111  Custom  OVALD111  ( Flashes=32, Traces=0 )
+Dcode 112  Diamond  1.631:1.631  ( Flashes=2, Traces=0 )
+Dcode 113  Rectangle  3.803:1.503  ( Flashes=2, Traces=0 )
+Dcode 114  Rectangle  2.494:1.914  ( Flashes=2, Traces=0 )
+Dcode 115  Oblong  2.003:1.703  ( Flashes=4, Traces=0 )
+Dcode 116  Circle  0.203  ( Flashes=4, Traces=0 )
+Dcode 117  Circle  2.153  ( Flashes=5, Traces=0 )
+Dcode 118  Rectangle  2.153:2.153  ( Flashes=1, Traces=0 )
+Dcode 119  Circle  1.253  ( Flashes=10, Traces=0 )
+Dcode 120  Circle  1.623  ( Flashes=12, Traces=0 )
+Dcode 121  Circle  3.653  ( Flashes=6, Traces=0 )
+Dcode 122  Circle  3.003  ( Flashes=6, Traces=0 )
+Dcode 123  Circle  4.203  ( Flashes=1, Traces=0 )
+Dcode 124  Circle  3.403  ( Flashes=4, Traces=0 )
+Dcode 125  Custom  ROUNDEDRECTD125  ( Flashes=4, Traces=0 )
+Dcode 126  Circle  0.650  ( Flashes=14, Traces=0 )
+Dcode 127  Circle  0.200  ( Flashes=12, Traces=0 )
+---------------------------
+Layer Width:  156.0425 
+Layer Height:  53.5714 
+Flashes:  611 
+Traces:  1 
+Polygons:  6 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04-SlotHoles.TXT
+=========================================
+---------------------------
+Layer Width:  9.5400 
+Layer Height:  5.9299 
+Flashes:  0 
+Traces:  0 
+Polygons:  0 
+
+=========================================
+Layer:  uP-H Main PCBA Assy V04.GKO
+=========================================
+Dcode 146  Circle  0.025  ( Flashes=0, Traces=1 )
+---------------------------
+Layer Width:  160.0253 
+Layer Height:  56.0256 
+Flashes:  0 
+Traces:  1 
+Polygons:  0 

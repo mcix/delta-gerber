@@ -42,7 +42,7 @@ public class PolygonPrimitive implements MacroPrimitive {
         if (options.isPolygonize()) {
             // Polygonized mode: use path
             String pathData = SvgPathUtils.polygonPath(cx, cy, d, n, rot);
-            return String.format("<path d=\"%s\" fill=\"%s\"/>", pathData, fill);
+            return String.format(java.util.Locale.US, "<path d=\"%s\" fill=\"%s\"/>", pathData, fill);
         } else {
             // Exact mode: use native SVG polygon element (already geometrically exact)
             double r = d / 2;
@@ -55,7 +55,7 @@ public class PolygonPrimitive implements MacroPrimitive {
                 if (i > 0) points.append(" ");
                 points.append(String.format(java.util.Locale.US, "%.6f,%.6f", x, y));
             }
-            return String.format("<polygon points=\"%s\" fill=\"%s\"/>", points, fill);
+            return String.format(java.util.Locale.US, "<polygon points=\"%s\" fill=\"%s\"/>", points, fill);
         }
     }
 

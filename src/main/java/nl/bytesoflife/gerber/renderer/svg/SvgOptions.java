@@ -10,6 +10,7 @@ public class SvgOptions {
     private String darkColor = "#000000";
     private String clearColor = "#ffffff";
     private boolean flipY = true;  // Whether Y-axis is flipped (Gerber Y-up to SVG Y-down)
+    private String apertureIdPrefix = "ap";  // Prefix for aperture IDs (allows multiple layers)
 
     public SvgOptions() {
     }
@@ -77,6 +78,34 @@ public class SvgOptions {
     public SvgOptions setFlipY(boolean flipY) {
         this.flipY = flipY;
         return this;
+    }
+
+    /**
+     * Prefix for aperture IDs in SVG output.
+     * Default is "ap", so aperture D10 becomes "ap10".
+     * For multi-layer SVGs, each layer uses a unique prefix like "L0_ap".
+     */
+    public String getApertureIdPrefix() {
+        return apertureIdPrefix;
+    }
+
+    public SvgOptions setApertureIdPrefix(String prefix) {
+        this.apertureIdPrefix = prefix;
+        return this;
+    }
+
+    /**
+     * Create a copy of these options.
+     */
+    public SvgOptions copy() {
+        SvgOptions copy = new SvgOptions();
+        copy.polygonize = this.polygonize;
+        copy.circleSegments = this.circleSegments;
+        copy.darkColor = this.darkColor;
+        copy.clearColor = this.clearColor;
+        copy.flipY = this.flipY;
+        copy.apertureIdPrefix = this.apertureIdPrefix;
+        return copy;
     }
 
     /**

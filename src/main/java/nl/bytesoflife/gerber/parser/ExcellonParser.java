@@ -2,6 +2,8 @@ package nl.bytesoflife.gerber.parser;
 
 import nl.bytesoflife.gerber.model.drill.*;
 import nl.bytesoflife.gerber.model.gerber.Unit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -11,11 +13,24 @@ import java.util.regex.Pattern;
  */
 public class ExcellonParser {
 
+    private static final Logger log = LoggerFactory.getLogger(ExcellonParser.class);
+
     private DrillDocument document;
     private Tool currentTool;
     private double currentX = 0;
     private double currentY = 0;
     private boolean inHeader = true;
+    private boolean inRoutingMode = false;
+    private double routeStartX = 0;
+    private double routeStartY = 0;
+    private InterpolationMode interpolationMode = InterpolationMode.LINEAR;
+
+    private enum InterpolationMode {
+        LINEAR,      // G01
+        RAPID,       // G00
+        CW_ARC,      // G02
+        CCW_ARC      // G03
+    }
 
     // Pattern for tool definition: T<num>C<diameter> or with optional parameters
     // Order varies: T1C0.8 or T1F200S500C0.8 etc.
@@ -41,19 +56,31 @@ public class ExcellonParser {
     private static final Pattern FORMAT_SPEC = Pattern.compile("^[%]?(\\d)\\.(\\d)$");
 
     public DrillDocument parse(String content) {
+        long startTime = System.currentTimeMillis();
+        log.trace("Starting Excellon parse, content length: {} chars", content.length());
+
         document = new DrillDocument();
         currentTool = null;
         currentX = 0;
         currentY = 0;
         inHeader = true;
+        inRoutingMode = false;
+        routeStartX = 0;
+        routeStartY = 0;
+        interpolationMode = InterpolationMode.LINEAR;
 
         String[] lines = content.split("\n");
+        log.trace("Processing {} lines", lines.length);
+
         for (String line : lines) {
             line = line.trim();
             if (line.isEmpty()) continue;
 
             parseLine(line);
         }
+
+        log.trace("Excellon parse complete in {}ms: {} operations, {} tools",
+            System.currentTimeMillis() - startTime, document.getOperations().size(), document.getTools().size());
 
         return document;
     }
@@ -71,7 +98,14 @@ public class ExcellonParser {
             return;
         }
 
-        // Handle M codes
+        // Handle header commands first (includes METRIC, INCH which start with M/I)
+        if (inHeader) {
+            if (parseHeaderCommand(line)) {
+                return;
+            }
+        }
+
+        // Handle M codes (M48, M30, M71, M72, etc.)
         if (line.startsWith("M")) {
             handleMCode(line);
             return;
@@ -81,13 +115,6 @@ public class ExcellonParser {
         if (line.startsWith("G")) {
             handleGCode(line);
             return;
-        }
-
-        // Handle header commands
-        if (inHeader) {
-            if (parseHeaderCommand(line)) {
-                return;
-            }
         }
 
         // Handle tool definition in header
@@ -128,8 +155,13 @@ public class ExcellonParser {
         Matcher metricMatcher = FORMAT_METRIC.matcher(line);
         if (metricMatcher.find()) {
             document.setUnit(Unit.MM);
-            if (metricMatcher.group(1) != null) {
-                document.setLeadingZeros(metricMatcher.group(1).equals("LZ"));
+            // Metric files typically use 3.3 format (3 integer, 3 decimal digits)
+            // This is different from inch files which use 2.4
+            document.setIntegerDigits(3);
+            document.setDecimalDigits(3);
+            String zeroMode = metricMatcher.group(1);
+            if (zeroMode != null) {
+                document.setLeadingZeros(zeroMode.equals("LZ"));
             }
             return true;
         }
@@ -138,6 +170,9 @@ public class ExcellonParser {
         Matcher inchMatcher = FORMAT_INCH.matcher(line);
         if (inchMatcher.find()) {
             document.setUnit(Unit.INCH);
+            // Inch files typically use 2.4 format (2 integer, 4 decimal digits)
+            document.setIntegerDigits(2);
+            document.setDecimalDigits(4);
             if (inchMatcher.group(1) != null) {
                 document.setLeadingZeros(inchMatcher.group(1).equals("LZ"));
             }
@@ -184,11 +219,23 @@ public class ExcellonParser {
             // End of program
             inHeader = false;
         } else if (line.startsWith("M71")) {
-            // Metric mode
+            // Metric mode - use 3.3 format (3 integer, 3 decimal)
             document.setUnit(Unit.MM);
+            document.setIntegerDigits(3);
+            document.setDecimalDigits(3);
         } else if (line.startsWith("M72")) {
-            // Inch mode
+            // Inch mode - use 2.4 format (2 integer, 4 decimal)
             document.setUnit(Unit.INCH);
+            document.setIntegerDigits(2);
+            document.setDecimalDigits(4);
+        } else if (line.startsWith("M15")) {
+            // Start of routing mode
+            inRoutingMode = true;
+            routeStartX = currentX;
+            routeStartY = currentY;
+        } else if (line.startsWith("M16") || line.startsWith("M17")) {
+            // End of routing mode
+            inRoutingMode = false;
         }
     }
 
@@ -201,6 +248,49 @@ public class ExcellonParser {
             // Drill mode (default)
         } else if (line.startsWith("G85")) {
             // Slot mode - will be handled by coordinate parser
+        } else if (line.startsWith("G00")) {
+            // Rapid move - parse coordinates if present
+            interpolationMode = InterpolationMode.RAPID;
+            parseGCodeWithCoordinates(line.substring(3));
+        } else if (line.startsWith("G01")) {
+            // Linear move - parse coordinates if present
+            interpolationMode = InterpolationMode.LINEAR;
+            parseGCodeWithCoordinates(line.substring(3));
+        } else if (line.startsWith("G40")) {
+            // Cutter compensation off - just ignore
+        }
+    }
+
+    private void parseGCodeWithCoordinates(String remainder) {
+        if (remainder == null || remainder.isEmpty()) {
+            return;
+        }
+
+        // Parse X and Y coordinates from the remainder
+        Matcher coordMatcher = COORDINATE.matcher(remainder);
+        if (coordMatcher.matches()) {
+            String xStr = coordMatcher.group(1);
+            String yStr = coordMatcher.group(2);
+
+            double x = xStr != null ? parseCoordinate(xStr) : currentX;
+            double y = yStr != null ? parseCoordinate(yStr) : currentY;
+
+            if (document.getCoordinateMode() == CoordinateMode.INCREMENTAL) {
+                x = currentX + x;
+                y = currentY + y;
+            }
+
+            // If in routing mode and linear interpolation, this is a slot
+            if (inRoutingMode && interpolationMode == InterpolationMode.LINEAR && currentTool != null) {
+                // Create slot from route start to this position
+                DrillSlot slot = new DrillSlot(currentTool, routeStartX, routeStartY, x, y);
+                document.addOperation(slot);
+                routeStartX = x;
+                routeStartY = y;
+            }
+
+            currentX = x;
+            currentY = y;
         }
     }
 
@@ -220,8 +310,19 @@ public class ExcellonParser {
             y = currentY + y;
         }
 
-        DrillHit hit = new DrillHit(currentTool, x, y);
-        document.addOperation(hit);
+        // If in routing mode with linear interpolation, create a slot
+        if (inRoutingMode && interpolationMode == InterpolationMode.LINEAR) {
+            DrillSlot slot = new DrillSlot(currentTool, routeStartX, routeStartY, x, y);
+            document.addOperation(slot);
+            routeStartX = x;
+            routeStartY = y;
+        } else if (!inRoutingMode || interpolationMode == InterpolationMode.RAPID) {
+            // Either not in routing mode (drill hit) or rapid move (position update only)
+            if (!inRoutingMode) {
+                DrillHit hit = new DrillHit(currentTool, x, y);
+                document.addOperation(hit);
+            }
+        }
 
         currentX = x;
         currentY = y;

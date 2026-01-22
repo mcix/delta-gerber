@@ -1,0 +1,42 @@
+G04 Test: Macro vector line primitive (code 20)*
+G04 Tests macro aperture with vector line primitives*
+%FSLAX26Y26*%
+%MOMM*%
+G04 Horizontal vector line*
+%AMVecH*
+20,1,0.3,-1.0,0,1.0,0,0*%
+G04 Vertical vector line*
+%AMVecV*
+20,1,0.3,0,-1.0,0,1.0,0*%
+G04 Diagonal vector line*
+%AMVecD*
+20,1,0.25,-0.8,-0.8,0.8,0.8,0*%
+G04 Rotated vector line (45 degrees)*
+%AMVecR45*
+20,1,0.3,-1.0,0,1.0,0,45*%
+G04 Rotated vector line (90 degrees)*
+%AMVecR90*
+20,1,0.3,-1.0,0,1.0,0,90*%
+G04 Cross using two vector lines*
+%AMCross*
+20,1,0.2,-1.0,0,1.0,0,0*
+20,1,0.2,0,-1.0,0,1.0,0*%
+%ADD10VecH*%
+%ADD11VecV*%
+%ADD12VecD*%
+%ADD13VecR45*%
+%ADD14VecR90*%
+%ADD15Cross*%
+D10*
+X2000000Y2000000D03*
+D11*
+X5500000Y2000000D03*
+D12*
+X9000000Y2000000D03*
+D13*
+X2000000Y5500000D03*
+D14*
+X5500000Y5500000D03*
+D15*
+X9000000Y5500000D03*
+M02*

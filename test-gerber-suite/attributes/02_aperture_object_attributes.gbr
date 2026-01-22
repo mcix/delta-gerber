@@ -1,0 +1,62 @@
+G04 Test: Aperture and Object attributes (TA, TO, TD)*
+G04 Tests aperture function and object attributes*
+G04 Based on Gerber spec sections 5.3, 5.4, 5.5*
+%FSLAX26Y26*%
+%MOMM*%
+%TF.FileFunction,Copper,L1,Top*%
+%TF.Part,Single*%
+G04 Define apertures with aperture attributes*
+G04 SMD pad aperture*
+%TA.AperFunction,SMDPad,CuDef*%
+%ADD10R,1.2X0.6*%
+G04 Via pad aperture*
+%TA.AperFunction,ViaPad*%
+%ADD11C,0.8*%
+G04 Component pad aperture*
+%TA.AperFunction,ComponentPad*%
+%ADD12C,1.0*%
+G04 Conductor aperture (for traces)*
+%TA.AperFunction,Conductor*%
+%ADD13C,0.25*%
+G04 Fiducial aperture*
+%TA.AperFunction,FiducialPad,Local*%
+%ADD14C,1.5*%
+G04 Delete aperture attributes before next definition*
+%TD*%
+G04 Non-conductor aperture (no function)*
+%ADD15C,0.3*%
+G04 Flash components with object attributes*
+D10*
+G04 Object attributes for component U1*
+%TO.C,U1*%
+%TO.P,U1,1*%
+X5000000Y5000000D03*
+%TO.P,U1,2*%
+X8000000Y5000000D03*
+G04 Clear object attributes*
+%TD.P*%
+%TD.C*%
+G04 Object attributes for component R1*
+%TO.C,R1*%
+%TO.P,R1,1*%
+D12*
+X15000000Y5000000D03*
+%TO.P,R1,2*%
+X18000000Y5000000D03*
+%TD*%
+G04 Draw traces with conductor aperture*
+D13*
+G01*
+%TO.N,GND*%
+X5000000Y5000000D02*
+X5000000Y10000000D01*
+X15000000Y10000000D01*
+X15000000Y5000000D01*
+%TD.N*%
+G04 Via pad*
+D11*
+X10000000Y10000000D03*
+G04 Fiducial*
+D14*
+X25000000Y5000000D03*
+M02*

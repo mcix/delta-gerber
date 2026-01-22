@@ -1,0 +1,24 @@
+G04 Test: Rectangle apertures - various shapes*
+G04 Tests standard rectangle aperture template (R)*
+%FSLAX26Y26*%
+%MOMM*%
+%ADD10R,1.0X1.0*%
+%ADD11R,2.0X1.0*%
+%ADD12R,1.0X2.0*%
+%ADD13R,2.5X0.5*%
+%ADD14R,0.5X2.5*%
+%ADD15R,1.5X1.5*%
+G04 Flash rectangles to show different aspect ratios*
+D10*
+X2000000Y2000000D03*
+D11*
+X5500000Y2000000D03*
+D12*
+X9000000Y2000000D03*
+D13*
+X2000000Y5500000D03*
+D14*
+X5500000Y5500000D03*
+D15*
+X9000000Y5500000D03*
+M02*

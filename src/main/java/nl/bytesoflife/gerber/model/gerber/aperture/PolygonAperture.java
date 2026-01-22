@@ -75,7 +75,7 @@ public class PolygonAperture extends Aperture {
             double x = r * Math.cos(angle);
             double y = r * Math.sin(angle);
             if (i > 0) points.append(" ");
-            points.append(String.format("%.6f,%.6f", x, y));
+            points.append(String.format(java.util.Locale.US, "%.6f,%.6f", x, y));
         }
 
         if (options.isPolygonize()) {
@@ -109,7 +109,7 @@ public class PolygonAperture extends Aperture {
                 return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
                     id, pathData, darkColor);
             } else {
-                return String.format(
+                return String.format(java.util.Locale.US,
                     "<polygon id=\"%s\" points=\"%s\" fill=\"%s\"/>",
                     id, points, darkColor);
             }

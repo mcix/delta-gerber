@@ -8,6 +8,8 @@ import nl.bytesoflife.gerber.model.gerber.aperture.*;
 import nl.bytesoflife.gerber.model.gerber.aperture.macro.MacroTemplate;
 import nl.bytesoflife.gerber.model.gerber.attribute.FileAttribute;
 import nl.bytesoflife.gerber.model.gerber.operation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -17,6 +19,8 @@ import java.util.regex.Pattern;
  * Parser for Gerber files.
  */
 public class GerberParser {
+
+    private static final Logger log = LoggerFactory.getLogger(GerberParser.class);
 
     private GerberDocument document;
     private CoordinateFormat coordFormat;
@@ -46,13 +50,24 @@ public class GerberParser {
     private static final Pattern COORD_J = Pattern.compile("J([+-]?\\d+)");
 
     public GerberDocument parse(String content) {
+        long startTime = System.currentTimeMillis();
+        log.trace("Starting Gerber parse, content length: {} chars", content.length());
+
         document = new GerberDocument();
         GerberLexer lexer = new GerberLexer();
-        List<Token> tokens = lexer.tokenize(content);
 
+        long lexStart = System.currentTimeMillis();
+        List<Token> tokens = lexer.tokenize(content);
+        log.trace("Lexer produced {} tokens in {}ms", tokens.size(), System.currentTimeMillis() - lexStart);
+
+        long parseStart = System.currentTimeMillis();
         for (Token token : tokens) {
             processToken(token);
         }
+        log.trace("Token processing took {}ms", System.currentTimeMillis() - parseStart);
+
+        log.trace("Gerber parse complete in {}ms: {} objects, {} apertures",
+            System.currentTimeMillis() - startTime, document.getObjects().size(), document.getApertures().size());
 
         return document;
     }

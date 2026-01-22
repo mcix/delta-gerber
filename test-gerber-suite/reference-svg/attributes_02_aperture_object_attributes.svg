@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="63" height="18" viewBox="0 0 63 18">
+<path fill-rule="evenodd" fill="rgb(78.431373%, 45.882353%, 20%)" fill-opacity="1" d="M 1.515625 16.285156 L 4.917969 16.285156 L 4.917969 14.585938 L 1.515625 14.585938 Z M 1.515625 16.285156 "/>
+<path fill-rule="evenodd" fill="rgb(78.431373%, 45.882353%, 20%)" fill-opacity="1" d="M 10.019531 16.285156 L 13.421875 16.285156 L 13.421875 14.585938 L 10.019531 14.585938 Z M 10.019531 16.285156 "/>
+<path fill-rule="evenodd" fill="rgb(78.431373%, 45.882353%, 20%)" fill-opacity="1" d="M 32.980469 15.4375 C 32.980469 13.546875 30.144531 13.546875 30.144531 15.4375 C 30.144531 17.324219 32.980469 17.324219 32.980469 15.4375 "/>
+<path fill-rule="evenodd" fill="rgb(78.431373%, 45.882353%, 20%)" fill-opacity="1" d="M 41.484375 15.4375 C 41.484375 13.546875 38.648438 13.546875 38.648438 15.4375 C 38.648438 17.324219 41.484375 17.324219 41.484375 15.4375 "/>
+<path fill="none" stroke-width="0.00984252" stroke-linecap="round" stroke-linejoin="miter" stroke="rgb(78.431373%, 45.882353%, 20%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0.19684 0.196835 L 0.19684 0.393721 " transform="matrix(72, 0, 0, -72, -10.957649, 29.609617)"/>
+<path fill="none" stroke-width="0.00984252" stroke-linecap="round" stroke-linejoin="miter" stroke="rgb(78.431373%, 45.882353%, 20%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0.19684 0.393721 L 0.590558 0.393721 " transform="matrix(72, 0, 0, -72, -10.957649, 29.609617)"/>
+<path fill="none" stroke-width="0.00984252" stroke-linecap="round" stroke-linejoin="miter" stroke="rgb(78.431373%, 45.882353%, 20%)" stroke-opacity="1" stroke-miterlimit="10" d="M 0.590558 0.393721 L 0.590558 0.196835 " transform="matrix(72, 0, 0, -72, -10.957649, 29.609617)"/>
+<path fill-rule="evenodd" fill="rgb(78.431373%, 45.882353%, 20%)" fill-opacity="1" d="M 18.523438 1.261719 C 18.523438 -0.25 16.253906 -0.25 16.253906 1.261719 C 16.253906 2.773438 18.523438 2.773438 18.523438 1.261719 "/>
+<path fill-rule="evenodd" fill="rgb(78.431373%, 45.882353%, 20%)" fill-opacity="1" d="M 62.035156 15.4375 C 62.035156 12.601562 57.78125 12.601562 57.78125 15.4375 C 57.78125 18.269531 62.035156 18.269531 62.035156 15.4375 "/>
+</svg>

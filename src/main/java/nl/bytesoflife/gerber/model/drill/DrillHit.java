@@ -32,8 +32,8 @@ public class DrillHit extends DrillOperation {
 
     @Override
     public String toSvg() {
-        return String.format(
-            "<circle cx=\"%.6f\" cy=\"%.6f\" r=\"%.6f\" class=\"drill\"/>",
+        return String.format(java.util.Locale.US,
+            "<circle cx=\"%.6f\" cy=\"%.6f\" r=\"%.6f\" fill=\"currentColor\"/>",
             x, y, tool.getDiameter() / 2);
     }
 

@@ -73,20 +73,20 @@ public class ObroundAperture extends Aperture {
             if (width > height) {
                 // Horizontal obround
                 double flatWidth = width - height;
-                path.append(String.format("M %.6f %.6f ", -flatWidth/2, -hh));
-                path.append(String.format("L %.6f %.6f ", flatWidth/2, -hh));
-                path.append(String.format("A %.6f %.6f 0 0 1 %.6f %.6f ", r, r, flatWidth/2, hh));
-                path.append(String.format("L %.6f %.6f ", -flatWidth/2, hh));
-                path.append(String.format("A %.6f %.6f 0 0 1 %.6f %.6f ", r, r, -flatWidth/2, -hh));
+                path.append(String.format(java.util.Locale.US, "M %.6f %.6f ", -flatWidth/2, -hh));
+                path.append(String.format(java.util.Locale.US, "L %.6f %.6f ", flatWidth/2, -hh));
+                path.append(String.format(java.util.Locale.US, "A %.6f %.6f 0 0 1 %.6f %.6f ", r, r, flatWidth/2, hh));
+                path.append(String.format(java.util.Locale.US, "L %.6f %.6f ", -flatWidth/2, hh));
+                path.append(String.format(java.util.Locale.US, "A %.6f %.6f 0 0 1 %.6f %.6f ", r, r, -flatWidth/2, -hh));
                 path.append("Z");
             } else {
                 // Vertical obround
                 double flatHeight = height - width;
-                path.append(String.format("M %.6f %.6f ", -hw, -flatHeight/2));
-                path.append(String.format("A %.6f %.6f 0 0 1 %.6f %.6f ", r, r, hw, -flatHeight/2));
-                path.append(String.format("L %.6f %.6f ", hw, flatHeight/2));
-                path.append(String.format("A %.6f %.6f 0 0 1 %.6f %.6f ", r, r, -hw, flatHeight/2));
-                path.append(String.format("L %.6f %.6f ", -hw, -flatHeight/2));
+                path.append(String.format(java.util.Locale.US, "M %.6f %.6f ", -hw, -flatHeight/2));
+                path.append(String.format(java.util.Locale.US, "A %.6f %.6f 0 0 1 %.6f %.6f ", r, r, hw, -flatHeight/2));
+                path.append(String.format(java.util.Locale.US, "L %.6f %.6f ", hw, flatHeight/2));
+                path.append(String.format(java.util.Locale.US, "A %.6f %.6f 0 0 1 %.6f %.6f ", r, r, -hw, flatHeight/2));
+                path.append(String.format(java.util.Locale.US, "L %.6f %.6f ", -hw, -flatHeight/2));
                 path.append("Z");
             }
 

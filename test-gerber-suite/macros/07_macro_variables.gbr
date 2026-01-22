@@ -1,0 +1,105 @@
+G04 Test: Macro variables and expressions*
+G04 Tests parametric macros with variables and arithmetic*
+G04 Based on Gerber spec section 4.5.4*
+%FSLAX26Y26*%
+%MOMM*%
+G04 Parametric donut: outer diameter $1, inner diameter calculated*
+%AMDonutParam*
+0 Outer circle with diameter $1*
+1,1,$1,0,0*
+0 Inner circle with diameter = outer * 0.6*
+$2=$1x0.6*
+1,0,$2,0,0*%
+G04 Parametric rectangle with calculated hole*
+%AMRectHole*
+0 Rectangle $1 x $2 with centered circular hole*
+21,1,$1,$2,0,0,0*
+0 Hole diameter = min(width,height) * 0.4*
+$3=$1x0.4*
+1,0,$3,0,0*%
+G04 Complex expression macro: rounded rectangle*
+%AMRoundedRect*
+0 Width=$1, Height=$2, Corner radius=$3*
+0 Two overlapping rectangles*
+21,1,$1,$2-$3-$3,0,0,0*
+21,1,$1-$3-$3,$2,0,0,0*
+0 Four corner circles (diameter = 2 * radius)*
+$4=$1/2-$3*
+$5=$2/2-$3*
+$6=$3x2*
+1,1,$6,$4,$5,0*
+1,1,$6,-$4,$5,0*
+1,1,$6,-$4,-$5,0*
+1,1,$6,$4,-$5,0*%
+G04 Macro with rotation parameter*
+%AMArrowParam*
+0 Arrow shape with width=$1, length=$2, rotation=$3*
+$4=$1/2*
+$5=$2x0.6*
+0 Arrow body (rectangle)*
+21,1,$1,$5,0,$5/2,$3*
+0 Arrow head (triangle using outline)*
+4,1,3,
+-$4,$5,
+$4,$5,
+0,$2,
+-$4,$5,
+$3*%
+G04 Macro with addition and subtraction*
+%AMCrossCalc*
+0 Cross: arm_width=$1, total_size=$2*
+$3=$2-$1*
+$4=$3/2*
+0 Horizontal bar*
+21,1,$2,$1,0,0,0*
+0 Vertical bar*
+21,1,$1,$2,0,0,0*%
+G04 Macro demonstrating operator precedence*
+%AMPrecedence*
+0 Test: $1 + $2 x $3 should be $1 + ($2 * $3)*
+$4=$1+$2x$3*
+0 Circle with diameter = result*
+1,1,$4,0,0*%
+G04 Create apertures from parametric macros*
+%ADD10DonutParam,2.0*%
+%ADD11DonutParam,1.5*%
+%ADD12DonutParam,1.0*%
+%ADD20RectHole,2.0X1.5*%
+%ADD21RectHole,1.5X2.0*%
+%ADD30RoundedRect,3.0X2.0X0.3*%
+%ADD31RoundedRect,2.0X3.0X0.5*%
+%ADD40ArrowParam,1.0X2.0X0*%
+%ADD41ArrowParam,1.0X2.0X45*%
+%ADD42ArrowParam,1.0X2.0X90*%
+%ADD50CrossCalc,0.5X2.5*%
+%ADD51CrossCalc,0.3X2.0*%
+G04 Test precedence: 1 + 2 x 3 = 7*
+%ADD60Precedence,1.0X2.0X3.0*%
+G04 Flash all apertures*
+D10*
+X3000000Y3000000D03*
+D11*
+X8000000Y3000000D03*
+D12*
+X12000000Y3000000D03*
+D20*
+X3000000Y8000000D03*
+D21*
+X8000000Y8000000D03*
+D30*
+X3000000Y14000000D03*
+D31*
+X10000000Y14000000D03*
+D40*
+X3000000Y20000000D03*
+D41*
+X8000000Y20000000D03*
+D42*
+X13000000Y20000000D03*
+D50*
+X3000000Y26000000D03*
+D51*
+X8000000Y26000000D03*
+D60*
+X15000000Y26000000D03*
+M02*

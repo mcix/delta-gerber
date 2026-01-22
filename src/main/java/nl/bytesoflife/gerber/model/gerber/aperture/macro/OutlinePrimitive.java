@@ -77,7 +77,7 @@ public class OutlinePrimitive implements MacroPrimitive {
         if (options.isPolygonize()) {
             // Polygonized mode: use path
             String pathData = SvgPathUtils.outlinePath(points, true);
-            return String.format("<path d=\"%s\" fill=\"%s\"/>", pathData, fill);
+            return String.format(java.util.Locale.US, "<path d=\"%s\" fill=\"%s\"/>", pathData, fill);
         } else {
             // Exact mode: use native SVG polygon element (outlines are already exact)
             StringBuilder pointsStr = new StringBuilder();
@@ -85,7 +85,7 @@ public class OutlinePrimitive implements MacroPrimitive {
                 if (i > 0) pointsStr.append(" ");
                 pointsStr.append(String.format(java.util.Locale.US, "%.6f,%.6f", points.get(i)[0], points.get(i)[1]));
             }
-            return String.format("<polygon points=\"%s\" fill=\"%s\"/>", pointsStr, fill);
+            return String.format(java.util.Locale.US, "<polygon points=\"%s\" fill=\"%s\"/>", pointsStr, fill);
         }
     }
 

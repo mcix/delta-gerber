@@ -3,6 +3,7 @@ package nl.bytesoflife.gerber.model.gerber.aperture.macro;
 import nl.bytesoflife.gerber.model.gerber.BoundingBox;
 import nl.bytesoflife.gerber.renderer.svg.SvgOptions;
 import nl.bytesoflife.gerber.renderer.svg.SvgPathUtils;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -53,7 +54,7 @@ public class CirclePrimitive implements MacroPrimitive {
             return String.format("<path d=\"%s\" fill=\"%s\"/>", pathData, fill);
         } else {
             // Exact mode: use native SVG circle element
-            return String.format("<circle cx=\"%.6f\" cy=\"%.6f\" r=\"%.6f\" fill=\"%s\"/>", cx, cy, r, fill);
+            return String.format(Locale.US, "<circle cx=\"%.6f\" cy=\"%.6f\" r=\"%.6f\" fill=\"%s\"/>", cx, cy, r, fill);
         }
     }
 

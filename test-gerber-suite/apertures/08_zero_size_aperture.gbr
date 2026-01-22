@@ -1,0 +1,42 @@
+G04 Test: Zero-size apertures*
+G04 Tests zero diameter circle aperture (allowed per spec)*
+G04 Zero-size apertures create no image but can carry attributes*
+G04 Based on Gerber spec section 4.3.2*
+%FSLAX26Y26*%
+%MOMM*%
+%TF.FileFunction,Profile,NP*%
+G04 Zero-size circle aperture for board outline*
+%TA.AperFunction,Profile*%
+%ADD10C,0*%
+G04 Regular aperture for comparison*
+%TD*%
+%ADD11C,0.5*%
+G04 Draw board outline with zero-size aperture (no visible trace)*
+D10*
+G01*
+X0Y0D02*
+X50000000D01*
+Y30000000D01*
+X0D01*
+Y0D01*
+G04 Draw visible reference rectangle inside*
+D11*
+X5000000Y5000000D02*
+X45000000D01*
+Y25000000D01*
+X5000000D01*
+Y5000000D01*
+G04 Zero-size aperture for profile cuts*
+D10*
+G04 Slot cut-out (invisible path)*
+X15000000Y10000000D02*
+X35000000D01*
+Y20000000D01*
+X15000000D01*
+Y10000000D01*
+G04 Flash zero-size aperture at corner points (invisible)*
+X0Y0D03*
+X50000000Y0D03*
+X50000000Y30000000D03*
+X0Y30000000D03*
+M02*

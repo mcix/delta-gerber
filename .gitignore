@@ -1,0 +1,19 @@
+# Excluded folder - contains third-party references and non-company testdata
+/excluded/
+
+# Maven
+/target/
+
+# IDE
+/.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -41,7 +41,7 @@ public class ThermalPrimitive implements MacroPrimitive {
         if (options.isPolygonize()) {
             // Polygonized mode: use path approximation
             String pathData = SvgPathUtils.thermalPath(cx, cy, od, id, gap, rot, options.getCircleSegments());
-            return String.format("<path d=\"%s\" fill=\"%s\"/>", pathData, options.getDarkColor());
+            return String.format(java.util.Locale.US, "<path d=\"%s\" fill=\"%s\"/>", pathData, options.getDarkColor());
         } else {
             // Exact mode: use SVG clip-path for precise thermal relief
             // Thermals are complex - use clip-path with circles and rectangles
@@ -51,7 +51,7 @@ public class ThermalPrimitive implements MacroPrimitive {
             double rotRad = Math.toRadians(rot);
 
             StringBuilder svg = new StringBuilder();
-            String clipId = String.format("thermal-clip-%.0f-%.0f", cx * 1000, cy * 1000);
+            String clipId = String.format(java.util.Locale.US, "thermal-clip-%.0f-%.0f", cx * 1000, cy * 1000);
 
             svg.append(String.format("<defs><clipPath id=\"%s\">", clipId));
             // Outer circle minus gap rectangles

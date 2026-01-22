@@ -1,0 +1,24 @@
+G04 Test: Polygon apertures - different vertex counts*
+G04 Tests standard polygon aperture template (P)*
+%FSLAX26Y26*%
+%MOMM*%
+%ADD10P,2.0X3*%
+%ADD11P,2.0X4*%
+%ADD12P,2.0X5*%
+%ADD13P,2.0X6*%
+%ADD14P,2.0X8*%
+%ADD15P,2.0X12*%
+G04 Flash polygons: triangle through 12-gon*
+D10*
+X2500000Y2500000D03*
+D11*
+X6500000Y2500000D03*
+D12*
+X10500000Y2500000D03*
+D13*
+X2500000Y6500000D03*
+D14*
+X6500000Y6500000D03*
+D15*
+X10500000Y6500000D03*
+M02*
