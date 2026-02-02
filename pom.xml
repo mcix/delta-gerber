@@ -5,12 +5,36 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>nl.bytesoflife</groupId>
-    <artifactId>gerber-parser</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <artifactId>delta-gerber</artifactId>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>Gerber Parser</name>
+    <name>Delta Gerber</name>
     <description>Java Gerber/NC drill file parser with SVG export</description>
+    <url>https://github.com/avanderheijde/delta-gerber</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Bytes of Life</name>
+            <email>info@bytesoflife.nl</email>
+            <organization>Bytes of Life</organization>
+            <organizationUrl>https://bytesoflife.nl</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/avanderheijde/delta-gerber.git</connection>
+        <developerConnection>scm:git:ssh://github.com:avanderheijde/delta-gerber.git</developerConnection>
+        <url>https://github.com/avanderheijde/delta-gerber/tree/main</url>
+    </scm>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -62,7 +86,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <mainClass>nl.bytesoflife.gerber.web.GerberViewerServer</mainClass>
+                    <mainClass>nl.bytesoflife.deltagerber.web.GerberViewerServer</mainClass>
                 </configuration>
             </plugin>
             <plugin>
@@ -72,11 +96,88 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>nl.bytesoflife.gerber.web.GerberViewerServer</mainClass>
+                            <mainClass>nl.bytesoflife.deltagerber.web.GerberViewerServer</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <!-- Source JAR -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Javadoc JAR -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.6.3</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- GPG Signing -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Central Publishing (Maven Central) -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.6.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

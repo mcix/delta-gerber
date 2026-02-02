@@ -1,8 +1,18 @@
-# Gerber Viewer
+# Delta Gerber
 
 A Java library for parsing Gerber RS-274X and Excellon drill files with SVG rendering.
 
-![Gerber Viewer Screenshot](Screenshot.png)
+![Delta Gerber Screenshot](Screenshot.png)
+
+## Maven Dependency
+
+```xml
+<dependency>
+    <groupId>nl.bytesoflife</groupId>
+    <artifactId>delta-gerber</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
 
 ## Features
 
@@ -23,7 +33,7 @@ A Java library for parsing Gerber RS-274X and Excellon drill files with SVG rend
 
 ```bash
 mvn clean install
-mvn exec:java -Dexec.mainClass="nl.bytesoflife.gerber.web.GerberViewerServer"
+mvn exec:java -Dexec.mainClass="nl.bytesoflife.deltagerber.web.GerberViewerServer"
 ```
 
 Open http://localhost:8080 and upload a Gerber ZIP archive.
@@ -32,15 +42,15 @@ Open http://localhost:8080 and upload a Gerber ZIP archive.
 
 The library includes a comprehensive visual test for aperture rendering that compares our implementation against reference images.
 
-[View Aperture Visual Test](https://htmlpreview.github.io/?https://github.com/mcix/gerber/blob/main/generated/aperture-visual-test.html)
+[View Aperture Visual Test](https://htmlpreview.github.io/?https://github.com/avanderheijde/delta-gerber/blob/main/generated/aperture-visual-test.html)
 
 ## Project Structure
 
-- `src/main/java/nl/bytesoflife/gerber/parser` - Gerber and Excellon parsers
-- `src/main/java/nl/bytesoflife/gerber/lexer` - Tokenizer for Gerber files
-- `src/main/java/nl/bytesoflife/gerber/model` - Data model for Gerber documents
-- `src/main/java/nl/bytesoflife/gerber/svg` - SVG rendering engine
-- `src/main/java/nl/bytesoflife/gerber/web` - Web viewer server
+- `src/main/java/nl/bytesoflife/deltagerber/parser` - Gerber and Excellon parsers
+- `src/main/java/nl/bytesoflife/deltagerber/lexer` - Tokenizer for Gerber files
+- `src/main/java/nl/bytesoflife/deltagerber/model` - Data model for Gerber documents
+- `src/main/java/nl/bytesoflife/deltagerber/svg` - SVG rendering engine
+- `src/main/java/nl/bytesoflife/deltagerber/web` - Web viewer server
 
 ## Usage as Library
 
