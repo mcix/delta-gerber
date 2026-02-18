@@ -184,6 +184,86 @@ public class ExcellonParserTest {
     }
 
     @Test
+    void testFileFormatComment44() {
+        // Altium-style drill file with ;FILE_FORMAT=4:4 comment
+        // The METRIC,LZ line would normally set 3:3 format, but the explicit
+        // FILE_FORMAT comment should take precedence
+        String drill = """
+            M48
+            ;FILE_FORMAT=4:4
+            METRIC,LZ
+            T01F00S00C0.2500
+            %
+            T01
+            X00191614Y-00218386
+            M30
+            """;
+
+        DrillDocument doc = parser.parse(drill);
+
+        assertEquals(Unit.MM, doc.getUnit());
+        assertEquals(4, doc.getIntegerDigits());
+        assertEquals(4, doc.getDecimalDigits());
+        assertTrue(doc.isLeadingZeros());
+
+        assertEquals(1, doc.getOperations().size());
+        DrillHit hit = (DrillHit) doc.getOperations().get(0);
+        // With 4:4 format and LZ: X00191614 = 0019.1614 = 19.1614
+        assertEquals(19.1614, hit.getX(), 0.0001);
+        // Y-00218386 = -0021.8386
+        assertEquals(-21.8386, hit.getY(), 0.0001);
+    }
+
+    @Test
+    void testFileFormatCommentNotOverriddenByMetric() {
+        // Verify that FILE_FORMAT comment is not overridden by subsequent METRIC line
+        // This was the original bug: METRIC,LZ always set 3:3 format, causing
+        // 4:4 coordinates to be parsed 10x too large
+        String drill = """
+            M48
+            ;FILE_FORMAT=4:4
+            METRIC,LZ
+            T01F00S00C0.5000
+            %
+            T01
+            X00100000Y00100000
+            M30
+            """;
+
+        DrillDocument doc = parser.parse(drill);
+
+        DrillHit hit = (DrillHit) doc.getOperations().get(0);
+        // With 4:4 format: X00100000 = 0010.0000 = 10.0 mm
+        // Bug would give 3:3 format: X00100000 -> 00100.000 = 100.0 mm (10x too large!)
+        assertEquals(10.0, hit.getX(), 0.0001);
+        assertEquals(10.0, hit.getY(), 0.0001);
+    }
+
+    @Test
+    void testMetricDefaultFormat33WithoutFileFormat() {
+        // Without FILE_FORMAT comment, METRIC should still default to 3:3
+        String drill = """
+            M48
+            METRIC,LZ
+            T1C0.8
+            %
+            T1
+            X010000Y010000
+            M30
+            """;
+
+        DrillDocument doc = parser.parse(drill);
+
+        assertEquals(3, doc.getIntegerDigits());
+        assertEquals(3, doc.getDecimalDigits());
+
+        DrillHit hit = (DrillHit) doc.getOperations().get(0);
+        // With 3:3 format: X010000 = 010.000 = 10.0 mm
+        assertEquals(10.0, hit.getX(), 0.0001);
+        assertEquals(10.0, hit.getY(), 0.0001);
+    }
+
+    @Test
     void testCoordinateParsing() {
         // Test implicit decimal point based on format
         String drill = """

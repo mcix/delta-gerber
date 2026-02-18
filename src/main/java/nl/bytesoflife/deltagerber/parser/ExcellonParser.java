@@ -21,6 +21,7 @@ public class ExcellonParser {
     private double currentY = 0;
     private boolean inHeader = true;
     private boolean inRoutingMode = false;
+    private boolean explicitFormatSet = false;
     private double routeStartX = 0;
     private double routeStartY = 0;
     private InterpolationMode interpolationMode = InterpolationMode.LINEAR;
@@ -54,6 +55,8 @@ public class ExcellonParser {
     private static final Pattern FORMAT_FMAT = Pattern.compile("^FMAT,?(\\d)");
     // Format spec like 2.4 or %2.4 - must be standalone on the line
     private static final Pattern FORMAT_SPEC = Pattern.compile("^[%]?(\\d)\\.(\\d)$");
+    // FILE_FORMAT comment (e.g. ;FILE_FORMAT=4:4) - used by Altium and others
+    private static final Pattern FILE_FORMAT_COMMENT = Pattern.compile("FILE_FORMAT\\s*=\\s*(\\d):(\\d)");
 
     public DrillDocument parse(String content) {
         long startTime = System.currentTimeMillis();
@@ -68,6 +71,7 @@ public class ExcellonParser {
         routeStartX = 0;
         routeStartY = 0;
         interpolationMode = InterpolationMode.LINEAR;
+        explicitFormatSet = false;
 
         String[] lines = content.split("\n");
         log.trace("Processing {} lines", lines.length);
@@ -88,7 +92,16 @@ public class ExcellonParser {
     private void parseLine(String line) {
         // Handle comments
         if (line.startsWith(";")) {
-            document.addComment(line.substring(1).trim());
+            String comment = line.substring(1).trim();
+            document.addComment(comment);
+            // Check for FILE_FORMAT comment (e.g. ;FILE_FORMAT=4:4)
+            Matcher fileFormatMatcher = FILE_FORMAT_COMMENT.matcher(comment);
+            if (fileFormatMatcher.find()) {
+                document.setIntegerDigits(Integer.parseInt(fileFormatMatcher.group(1)));
+                document.setDecimalDigits(Integer.parseInt(fileFormatMatcher.group(2)));
+                explicitFormatSet = true;
+                log.trace("Explicit FILE_FORMAT set to {}:{}", fileFormatMatcher.group(1), fileFormatMatcher.group(2));
+            }
             return;
         }
 
@@ -156,9 +169,11 @@ public class ExcellonParser {
         if (metricMatcher.find()) {
             document.setUnit(Unit.MM);
             // Metric files typically use 3.3 format (3 integer, 3 decimal digits)
-            // This is different from inch files which use 2.4
-            document.setIntegerDigits(3);
-            document.setDecimalDigits(3);
+            // But only set defaults if no explicit format was specified (e.g. FILE_FORMAT=4:4)
+            if (!explicitFormatSet) {
+                document.setIntegerDigits(3);
+                document.setDecimalDigits(3);
+            }
             String zeroMode = metricMatcher.group(1);
             if (zeroMode != null) {
                 document.setLeadingZeros(zeroMode.equals("LZ"));
@@ -171,8 +186,11 @@ public class ExcellonParser {
         if (inchMatcher.find()) {
             document.setUnit(Unit.INCH);
             // Inch files typically use 2.4 format (2 integer, 4 decimal digits)
-            document.setIntegerDigits(2);
-            document.setDecimalDigits(4);
+            // But only set defaults if no explicit format was specified
+            if (!explicitFormatSet) {
+                document.setIntegerDigits(2);
+                document.setDecimalDigits(4);
+            }
             if (inchMatcher.group(1) != null) {
                 document.setLeadingZeros(inchMatcher.group(1).equals("LZ"));
             }
@@ -219,15 +237,19 @@ public class ExcellonParser {
             // End of program
             inHeader = false;
         } else if (line.startsWith("M71")) {
-            // Metric mode - use 3.3 format (3 integer, 3 decimal)
+            // Metric mode - use 3.3 format (3 integer, 3 decimal) unless explicit format set
             document.setUnit(Unit.MM);
-            document.setIntegerDigits(3);
-            document.setDecimalDigits(3);
+            if (!explicitFormatSet) {
+                document.setIntegerDigits(3);
+                document.setDecimalDigits(3);
+            }
         } else if (line.startsWith("M72")) {
-            // Inch mode - use 2.4 format (2 integer, 4 decimal)
+            // Inch mode - use 2.4 format (2 integer, 4 decimal) unless explicit format set
             document.setUnit(Unit.INCH);
-            document.setIntegerDigits(2);
-            document.setDecimalDigits(4);
+            if (!explicitFormatSet) {
+                document.setIntegerDigits(2);
+                document.setDecimalDigits(4);
+            }
         } else if (line.startsWith("M15")) {
             // Start of routing mode
             inRoutingMode = true;
