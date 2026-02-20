@@ -18,3 +18,6 @@ Thumbs.db
 # Logs
 *.log
 RELEASING.md
+
+# Secrets
+.mvn-gpg-passphrase
