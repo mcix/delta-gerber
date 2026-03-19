@@ -7,6 +7,7 @@ import com.deltaproto.deltagerber.parser.GerberParser;
 import com.deltaproto.deltagerber.renderer.svg.SVGRenderer;
 
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -239,5 +240,59 @@ public class GerberParserTest {
         Aperture ap15 = doc.getAperture(15);
         assertNotNull(ap15);
         assertEquals("TARGET", ap15.getTemplateCode());
+    }
+
+    @Test
+    void testCombinedFormatAndUnitBlock() {
+        // Cadence Allegro style: format spec and unit in a single %...% block
+        // separated by *, e.g. %FSLAX25Y25*MOIN*%
+        // This tests that both commands are correctly parsed from one block.
+        String gerber = """
+            G04 Test combined FS+MO block*
+            %FSLAX25Y25*MOIN*%
+            %ADD10C,.050000*%
+            %ADD11R,.060000X.040000*%
+            D10*
+            X50000Y50000D03*
+            X150000Y50000D03*
+            D11*
+            X50000Y50000D01*
+            X150000Y50000D01*
+            X150000Y150000D01*
+            M02*
+            """;
+
+        GerberDocument doc = parser.parse(gerber);
+
+        // Unit should be MM after normalization, but coordinates must have been
+        // converted from inches to mm during parsing
+        assertEquals(Unit.MM, doc.getUnit());
+        assertEquals(2, doc.getApertures().size());
+
+        // Circle aperture: 0.05 inch = 1.27 mm
+        Aperture ap10 = doc.getAperture(10);
+        assertNotNull(ap10);
+        assertInstanceOf(CircleAperture.class, ap10);
+        assertEquals(1.27, ((CircleAperture) ap10).getDiameter(), 0.01);
+
+        // Rectangle aperture: 0.06 x 0.04 inch = 1.524 x 1.016 mm
+        Aperture ap11 = doc.getAperture(11);
+        assertNotNull(ap11);
+        assertInstanceOf(RectangleAperture.class, ap11);
+        assertEquals(1.524, ((RectangleAperture) ap11).getWidth(), 0.01);
+        assertEquals(1.016, ((RectangleAperture) ap11).getHeight(), 0.01);
+
+        // Flash at X50000 with format 2:5 = 0.50000 inch = 12.7 mm
+        // Flash at X150000 = 1.50000 inch = 38.1 mm
+        BoundingBox bbox = doc.getBoundingBox();
+        assertTrue(bbox.isValid());
+        // Width: 38.1 - 12.7 = 25.4mm + aperture (~1.5mm) ≈ 26-27mm
+        assertTrue(bbox.getWidth() > 25, "Width in mm: " + bbox.getWidth());
+        assertTrue(bbox.getWidth() < 30, "Width in mm: " + bbox.getWidth());
+
+        SVGRenderer renderer = new SVGRenderer();
+        String svg = renderer.render(doc);
+        assertNotNull(svg);
+        assertTrue(svg.contains("<svg"));
     }
 }

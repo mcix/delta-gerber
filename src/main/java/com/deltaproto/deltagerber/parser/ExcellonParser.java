@@ -5,6 +5,8 @@ import com.deltaproto.deltagerber.model.gerber.Unit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +27,11 @@ public class ExcellonParser {
     private double routeStartX = 0;
     private double routeStartY = 0;
     private InterpolationMode interpolationMode = InterpolationMode.LINEAR;
+
+    // Cadence Allegro holesize-based tool tracking
+    private final List<Tool> holesizeTools = new ArrayList<>();
+    private int holesizeToolIndex = 0;
+    private boolean holesizeMetric = false;
 
     private enum InterpolationMode {
         LINEAR,      // G01
@@ -49,6 +56,14 @@ public class ExcellonParser {
     private static final Pattern SLOT = Pattern.compile(
         "X([+-]?[\\d.]+)?Y([+-]?[\\d.]+)?G85X([+-]?[\\d.]+)?Y([+-]?[\\d.]+)?");
 
+    // Repeat code: R<count>X<offset>Y<offset> (Cadence Allegro)
+    private static final Pattern REPEAT_CODE = Pattern.compile(
+        "^R(\\d+)(?:X([+-]?[\\d.]+))?(?:Y([+-]?[\\d.]+))?$");
+
+    // Holesize comment: ;   Holesize N. = X.XXXXXX ... PLATED|NON_PLATED MM|INCH Quantity = N
+    private static final Pattern HOLESIZE_COMMENT = Pattern.compile(
+        "Holesize\\s+(\\d+)\\.\\s*=\\s*([\\d.]+).*?(PLATED|NON_PLATED)\\s+(MM|INCH)\\s+Quantity\\s*=\\s*(\\d+)");
+
     // Format specification patterns
     private static final Pattern FORMAT_METRIC = Pattern.compile("^METRIC[,\\s]*(LZ|TZ)?");
     private static final Pattern FORMAT_INCH = Pattern.compile("^INCH[,\\s]*(LZ|TZ)?");
@@ -72,6 +87,9 @@ public class ExcellonParser {
         routeStartY = 0;
         interpolationMode = InterpolationMode.LINEAR;
         explicitFormatSet = false;
+        holesizeTools.clear();
+        holesizeToolIndex = 0;
+        holesizeMetric = false;
 
         String[] lines = content.split("\n");
         log.trace("Processing {} lines", lines.length);
@@ -105,12 +123,41 @@ public class ExcellonParser {
                 explicitFormatSet = true;
                 log.trace("Explicit FILE_FORMAT set to {}:{}", fileFormatMatcher.group(1), fileFormatMatcher.group(2));
             }
+            // Check for Holesize comment (Cadence Allegro format)
+            Matcher holesizeMatcher = HOLESIZE_COMMENT.matcher(comment);
+            if (holesizeMatcher.find()) {
+                int toolNum = Integer.parseInt(holesizeMatcher.group(1));
+                double diameter = Double.parseDouble(holesizeMatcher.group(2));
+                String unitStr = holesizeMatcher.group(4);
+                if ("INCH".equals(unitStr)) {
+                    diameter = Unit.INCH.toMm(diameter);
+                } else {
+                    holesizeMetric = true;
+                }
+                Tool tool = new Tool(toolNum, diameter);
+                document.addTool(tool);
+                holesizeTools.add(tool);
+                log.trace("Holesize tool T{}: {}mm", toolNum, diameter);
+            }
             return;
         }
 
         // Handle end of header marker
         if (line.equals("%")) {
             inHeader = false;
+            // If tools were defined via Holesize comments (Cadence Allegro),
+            // set up format and select the first tool
+            if (!holesizeTools.isEmpty() && currentTool == null) {
+                if (holesizeMetric && !explicitFormatSet) {
+                    document.setUnit(Unit.MM);
+                    document.setIntegerDigits(3);
+                    document.setDecimalDigits(5);
+                    document.setLeadingZeros(true);
+                }
+                holesizeToolIndex = 0;
+                currentTool = holesizeTools.get(0);
+                log.trace("Cadence Allegro mode: selected first holesize tool T{}", currentTool.getNumber());
+            }
             return;
         }
 
@@ -148,6 +195,13 @@ public class ExcellonParser {
         if (toolSelectMatcher.matches()) {
             int toolNum = Integer.parseInt(toolSelectMatcher.group(1));
             currentTool = document.getTool(toolNum);
+            return;
+        }
+
+        // Handle repeat code (Cadence Allegro: R<count>X<offset>Y<offset>)
+        Matcher repeatMatcher = REPEAT_CODE.matcher(line);
+        if (repeatMatcher.matches()) {
+            handleRepeatCode(repeatMatcher);
             return;
         }
 
@@ -236,9 +290,22 @@ public class ExcellonParser {
         } else if (line.startsWith("M95") || line.equals("%")) {
             // End of header / start of program
             inHeader = false;
-        } else if (line.startsWith("M30") || line.startsWith("M00")) {
+        } else if (line.startsWith("M30")) {
             // End of program
             inHeader = false;
+        } else if (line.startsWith("M00")) {
+            // Tool change separator (Cadence Allegro) or program stop
+            inHeader = false;
+            if (!holesizeTools.isEmpty()) {
+                holesizeToolIndex++;
+                if (holesizeToolIndex < holesizeTools.size()) {
+                    currentTool = holesizeTools.get(holesizeToolIndex);
+                    log.trace("M00: advanced to holesize tool T{}", currentTool.getNumber());
+                } else {
+                    log.trace("M00: no more holesize tools");
+                    currentTool = null;
+                }
+            }
         } else if (line.startsWith("M71")) {
             // Metric mode - use 3.3 format (3 integer, 3 decimal) unless explicit format set
             document.setUnit(Unit.MM);
@@ -380,6 +447,26 @@ public class ExcellonParser {
 
         currentX = endX;
         currentY = endY;
+    }
+
+    private void handleRepeatCode(Matcher matcher) {
+        if (currentTool == null) {
+            return;
+        }
+
+        int count = Integer.parseInt(matcher.group(1));
+        String xOffStr = matcher.group(2);
+        String yOffStr = matcher.group(3);
+
+        double xOffset = xOffStr != null ? parseCoordinate(xOffStr) : 0;
+        double yOffset = yOffStr != null ? parseCoordinate(yOffStr) : 0;
+
+        for (int i = 0; i < count; i++) {
+            currentX += xOffset;
+            currentY += yOffset;
+            DrillHit hit = new DrillHit(currentTool, currentX, currentY);
+            document.addOperation(hit);
+        }
     }
 
     private double parseCoordinate(String value) {

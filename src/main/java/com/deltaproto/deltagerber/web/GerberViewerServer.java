@@ -980,7 +980,7 @@ public class GerberViewerServer {
         // Set default locale to US for consistent number formatting in SVG
         java.util.Locale.setDefault(java.util.Locale.US);
 
-        int port = 8080;
+        int port = 938;
         if (args.length > 0) {
             port = Integer.parseInt(args[0]);
         }

@@ -7,6 +7,7 @@ import com.deltaproto.deltagerber.parser.ExcellonParser;
 import com.deltaproto.deltagerber.renderer.svg.DrillSVGRenderer;
 
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -270,6 +271,143 @@ public class ExcellonParserTest {
         // With 3:3 format: X010000 = 010.000 = 10.0 mm
         assertEquals(10.0, hit.getX(), 0.0001);
         assertEquals(10.0, hit.getY(), 0.0001);
+    }
+
+    @Test
+    void testCadenceAllegroHolesizeFormat() {
+        // Cadence Allegro format: tools defined via Holesize comments,
+        // M00 separates tool groups, repeat codes for stepped holes
+        String drill = """
+            ;   Holesize 1. = 0.200000 Tolerance = +0.000000/-0.000000 PLATED MM Quantity = 3
+            ;   Holesize 2. = 0.350000 Tolerance = +0.000000/-0.000000 PLATED MM Quantity = 5
+            %
+            G90
+            X00100000Y00200000
+            X00300000Y00400000
+            X00500000Y00600000
+            M00
+            X01000000Y01000000
+            R02X00100000
+            X02000000Y02000000
+            X03000000Y03000000
+            M30
+            """;
+
+        DrillDocument doc = parser.parse(drill);
+
+        assertEquals(Unit.MM, doc.getUnit());
+        assertEquals(3, doc.getIntegerDigits());
+        assertEquals(5, doc.getDecimalDigits());
+
+        // Should have 2 tools from Holesize comments
+        assertEquals(2, doc.getTools().size());
+        assertEquals(0.2, doc.getTool(1).getDiameter(), 0.001);
+        assertEquals(0.35, doc.getTool(2).getDiameter(), 0.001);
+
+        // Tool 1: 3 hits, Tool 2: 3 direct + 2 repeat = 5 hits, total = 8
+        assertEquals(8, doc.getOperations().size());
+
+        // First 3 hits should use tool 1
+        DrillHit hit1 = (DrillHit) doc.getOperations().get(0);
+        assertEquals(0.2, hit1.getTool().getDiameter(), 0.001);
+        // X00100000 with 3:5 = 001.00000 = 1.0mm
+        assertEquals(1.0, hit1.getX(), 0.001);
+        // Y00200000 with 3:5 = 002.00000 = 2.0mm
+        assertEquals(2.0, hit1.getY(), 0.001);
+
+        // After M00, tool 2 should be selected
+        DrillHit hit4 = (DrillHit) doc.getOperations().get(3);
+        assertEquals(0.35, hit4.getTool().getDiameter(), 0.001);
+        // X01000000 = 010.00000 = 10.0mm
+        assertEquals(10.0, hit4.getX(), 0.001);
+
+        // Repeat code R02X00100000: repeat 2 times with X offset 001.00000 = 1.0mm
+        DrillHit hit5 = (DrillHit) doc.getOperations().get(4);
+        assertEquals(11.0, hit5.getX(), 0.001);
+        assertEquals(10.0, hit5.getY(), 0.001);
+
+        DrillHit hit6 = (DrillHit) doc.getOperations().get(5);
+        assertEquals(12.0, hit6.getX(), 0.001);
+        assertEquals(10.0, hit6.getY(), 0.001);
+    }
+
+    @Test
+    void testCadenceAllegroMultiToolWithRepeat() {
+        // Realistic Cadence Allegro drill file with 3 tool groups separated by M00,
+        // repeat codes, and 3:5 metric format — no header, no tool select commands
+        String drill = """
+            ;   Holesize 1. = 0.350000 Tolerance = +0.000000/-0.000000 PLATED MM Quantity = 4
+            ;   Holesize 2. = 1.000000 Tolerance = +0.000000/-0.000000 PLATED MM Quantity = 6
+            ;   Holesize 3. = 3.200000 Tolerance = +0.000000/-0.000000 NON_PLATED MM Quantity = 4
+            %
+            G90
+            X03960000Y32500000
+            X07015000Y33110000
+            X13982500Y33196000
+            X14262400Y32740000
+            M00
+            X01000000Y01000000
+            R02X00550000
+            X05000000Y02000000
+            R02X00550000
+            M00
+            X00491000Y16145000
+            X07349000Y16145000
+            X00491000Y08195000
+            X07349000Y08195000
+            M30
+            """;
+
+        DrillDocument doc = parser.parse(drill);
+
+        assertEquals(Unit.MM, doc.getUnit());
+        assertEquals(3, doc.getIntegerDigits());
+        assertEquals(5, doc.getDecimalDigits());
+        assertEquals(3, doc.getTools().size());
+
+        // Verify tool diameters
+        assertEquals(0.35, doc.getTool(1).getDiameter(), 0.001);
+        assertEquals(1.0, doc.getTool(2).getDiameter(), 0.001);
+        assertEquals(3.2, doc.getTool(3).getDiameter(), 0.001);
+
+        // Tool 1: 4 hits, Tool 2: 2 + 2*R02 = 6 hits, Tool 3: 4 hits = total 14
+        assertEquals(14, doc.getOperations().size());
+
+        // Verify first tool 1 hit: X03960000 = 039.60000 = 39.6mm
+        DrillHit h1 = (DrillHit) doc.getOperations().get(0);
+        assertEquals(0.35, h1.getTool().getDiameter(), 0.001);
+        assertEquals(39.6, h1.getX(), 0.001);
+        assertEquals(325.0, h1.getY(), 0.001);
+
+        // Tool 2 starts after M00 (4 hits from tool 1)
+        DrillHit h5 = (DrillHit) doc.getOperations().get(4);
+        assertEquals(1.0, h5.getTool().getDiameter(), 0.001);
+        assertEquals(10.0, h5.getX(), 0.001);
+        assertEquals(10.0, h5.getY(), 0.001);
+
+        // Repeat code: R02X00550000 = repeat 2 times with X+5.5mm
+        DrillHit h6 = (DrillHit) doc.getOperations().get(5);
+        assertEquals(15.5, h6.getX(), 0.001);
+        assertEquals(10.0, h6.getY(), 0.001);
+        DrillHit h7 = (DrillHit) doc.getOperations().get(6);
+        assertEquals(21.0, h7.getX(), 0.001);
+
+        // Tool 3 after second M00
+        DrillHit h11 = (DrillHit) doc.getOperations().get(10);
+        assertEquals(3.2, h11.getTool().getDiameter(), 0.001);
+
+        // Bounding box should be reasonable
+        BoundingBox bbox = doc.getBoundingBox();
+        assertTrue(bbox.isValid());
+        assertTrue(bbox.getWidth() > 50);
+        assertTrue(bbox.getHeight() > 200);
+
+        // SVG renders successfully
+        DrillSVGRenderer renderer = new DrillSVGRenderer();
+        String svg = renderer.render(doc);
+        assertNotNull(svg);
+        assertTrue(svg.contains("<svg"));
+        assertTrue(svg.contains("circle"));
     }
 
     @Test

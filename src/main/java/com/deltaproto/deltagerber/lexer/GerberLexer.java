@@ -51,17 +51,18 @@ public class GerberLexer {
             int lineNum = countLines(content, extMatcher.start());
             int position = extMatcher.start();
 
-            // Parse the extended command content (strip trailing * if present)
-            String cmd = extMatcher.group(1);
-            // Commands inside % are separated by *, and the whole block ends with *%
-            // Remove trailing * before closing %
-            if (cmd.endsWith("*")) {
-                cmd = cmd.substring(0, cmd.length() - 1);
-            }
+            // A single %...% block can contain multiple commands separated by *.
+            // e.g. %FSLAX25Y25*MOIN*% contains both a format spec and a unit command.
+            String blockContent = extMatcher.group(1);
+            String[] commands = blockContent.split("\\*");
+            for (String cmd : commands) {
+                cmd = cmd.trim();
+                if (cmd.isEmpty()) continue;
 
-            Token token = parseExtendedCommand(cmd, lineNum);
-            if (token != null) {
-                extendedTokens.add(new PositionedToken(token, position));
+                Token token = parseExtendedCommand(cmd, lineNum);
+                if (token != null) {
+                    extendedTokens.add(new PositionedToken(token, position));
+                }
             }
 
             lastEnd = extMatcher.end();
