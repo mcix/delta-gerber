@@ -32,7 +32,7 @@ public class CoordinateFormat {
             coordStr = coordStr.substring(1);
         }
 
-        // Pad or truncate to expected length
+        // Pad to expected length if shorter
         int totalDigits = integerDigits + decimalDigits;
 
         if (leadingZeroOmitted) {
@@ -47,9 +47,13 @@ public class CoordinateFormat {
             }
         }
 
-        // Split into integer and decimal parts
-        String intPart = coordStr.substring(0, integerDigits);
-        String decPart = coordStr.substring(integerDigits);
+        // Split into integer and decimal parts.
+        // The decimal part is always the last decimalDigits characters;
+        // everything before that is the integer part. This handles coordinates
+        // that exceed the declared integer digit count (e.g., format 2.5 with
+        // 8-digit coordinates from Cadence Allegro mm-unit exports).
+        String intPart = coordStr.substring(0, coordStr.length() - decimalDigits);
+        String decPart = coordStr.substring(coordStr.length() - decimalDigits);
 
         double value = Double.parseDouble(intPart + "." + decPart);
         return negative ? -value : value;

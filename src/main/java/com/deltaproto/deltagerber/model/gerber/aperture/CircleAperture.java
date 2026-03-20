@@ -52,7 +52,6 @@ public class CircleAperture extends Aperture {
     @Override
     public String toSvgDef(String id, SvgOptions options) {
         double r = diameter / 2;
-        String darkColor = options.getDarkColor();
 
         if (options.isPolygonize()) {
             // Polygonized mode: approximate circles as paths
@@ -63,8 +62,8 @@ public class CircleAperture extends Aperture {
             } else {
                 pathData = SvgPathUtils.circlePath(0, 0, r, options.getCircleSegments());
             }
-            return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
-                id, pathData, darkColor);
+            return String.format("<path id=\"%s\" d=\"%s\" fill-rule=\"evenodd\"/>",
+                id, pathData);
         } else {
             // Exact mode: use native SVG elements
             if (hasHole()) {
@@ -76,12 +75,12 @@ public class CircleAperture extends Aperture {
                     "M %.6f 0 A %.6f %.6f 0 1 0 %.6f 0 A %.6f %.6f 0 1 0 %.6f 0 Z",    // Inner CCW
                     r, r, r, -r, r, r, r,
                     hr, hr, hr, -hr, hr, hr, hr);
-                return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
-                    id, pathData, darkColor);
+                return String.format("<path id=\"%s\" d=\"%s\" fill-rule=\"evenodd\"/>",
+                    id, pathData);
             } else {
                 return String.format(java.util.Locale.US,
-                    "<circle id=\"%s\" cx=\"0\" cy=\"0\" r=\"%.6f\" fill=\"%s\"/>",
-                    id, r, darkColor);
+                    "<circle id=\"%s\" cx=\"0\" cy=\"0\" r=\"%.6f\"/>",
+                    id, r);
             }
         }
     }

@@ -148,25 +148,40 @@ public class MultiLayerSVGRenderer {
             "fill-rule=\"nonzero\">\n",
             minX, minY, width, height));
 
-        // CSS styles with background variable for clear polarity elements
-        // The background color matches the frontend's SVG canvas background
-        svg.append("<style>\n");
-        svg.append("  :root { --viewer-bg: #0d0d1a; }\n");
-        svg.append("</style>\n");
-
         // Collect all apertures from all Gerber layers with unique prefixes
         // Use "currentColor" so apertures pick up the layer group's color property
-        // Use "var(--viewer-bg)" for clear color to match background
         svg.append("<defs>\n");
+
+        // Mask base rect for clear polarity masks
+        String maskRect = PolarityMaskHelper.createMaskRect(minX, minY, width, height, 1);
+
         int layerIndex = 0;
+        // Pre-compute polarity groups per layer (needed for both mask defs and rendering)
+        List<List<PolarityMaskHelper.PolarityGroup>> allLayerGroups = new ArrayList<>();
+
         for (Layer layer : layers) {
             if (layer.isGerber() && layer.getGerberDoc() != null) {
-                String prefix = "L" + layerIndex + "_ap";
-                svgOptions.setDarkColor("currentColor").setClearColor("var(--viewer-bg)").setFlipY(flipY);
+                String aperturePrefix = "L" + layerIndex + "_ap";
+                // Aperture defs don't include fill — fill is set on <use> elements
+                svgOptions.setDarkColor("currentColor").setClearColor("currentColor").setFlipY(flipY);
                 for (Aperture aperture : layer.getGerberDoc().getApertures().values()) {
-                    String def = aperture.toSvgDef(prefix + aperture.getDCode(), svgOptions);
+                    String def = aperture.toSvgDef(aperturePrefix + aperture.getDCode(), svgOptions);
                     svg.append("  ").append(def).append("\n");
                 }
+
+                // Group objects by polarity and generate mask defs
+                List<PolarityMaskHelper.PolarityGroup> groups =
+                    PolarityMaskHelper.groupByPolarity(layer.getGerberDoc().getObjects());
+                allLayerGroups.add(groups);
+
+                // Generate masks for clear polarity groups (black = hidden in mask)
+                String maskPrefix = "L" + layerIndex + "_cm";
+                SvgOptions maskOptions = svgOptions.copy();
+                maskOptions.setApertureIdPrefix(aperturePrefix);
+                maskOptions.setDarkColor("black").setClearColor("black");
+                PolarityMaskHelper.generateMaskDefs(svg, groups, maskPrefix, maskRect, maskOptions);
+            } else {
+                allLayerGroups.add(Collections.emptyList());
             }
             layerIndex++;
         }
@@ -195,7 +210,15 @@ public class MultiLayerSVGRenderer {
 
             // Render layer content
             if (layer.isGerber()) {
-                renderGerberContent(svg, layer.getGerberDoc(), "L" + layerIndex + "_ap");
+                String aperturePrefix = "L" + layerIndex + "_ap";
+                String maskPrefix = "L" + layerIndex + "_cm";
+                List<PolarityMaskHelper.PolarityGroup> groups = allLayerGroups.get(layerIndex);
+
+                SvgOptions layerOptions = svgOptions.copy();
+                layerOptions.setApertureIdPrefix(aperturePrefix);
+                layerOptions.setDarkColor("currentColor").setClearColor("currentColor");
+
+                PolarityMaskHelper.renderWithMasks(svg, groups, maskPrefix, layerOptions);
             } else if (layer.isDrill()) {
                 renderDrillContent(svg, layer.getDrillDoc());
             }
@@ -208,23 +231,6 @@ public class MultiLayerSVGRenderer {
         svg.append("</svg>");
 
         return svg.toString();
-    }
-
-    private void renderGerberContent(StringBuilder svg, GerberDocument doc, String aperturePrefix) {
-        if (doc == null) return;
-
-        // Create a modified SvgOptions that uses the prefixed aperture IDs and currentColor
-        // Use "var(--viewer-bg)" for clear color to match background
-        SvgOptions layerOptions = svgOptions.copy();
-        layerOptions.setApertureIdPrefix(aperturePrefix);
-        layerOptions.setDarkColor("currentColor").setClearColor("var(--viewer-bg)");
-
-        for (GraphicsObject obj : doc.getObjects()) {
-            String objSvg = obj.toSvg(layerOptions);
-            if (objSvg != null && !objSvg.isEmpty()) {
-                svg.append("    ").append(objSvg).append("\n");
-            }
-        }
     }
 
     private void renderDrillContent(StringBuilder svg, DrillDocument doc) {

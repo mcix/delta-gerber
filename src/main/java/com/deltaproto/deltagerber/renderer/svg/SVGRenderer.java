@@ -3,8 +3,8 @@ package com.deltaproto.deltagerber.renderer.svg;
 import com.deltaproto.deltagerber.model.gerber.BoundingBox;
 import com.deltaproto.deltagerber.model.gerber.GerberDocument;
 import com.deltaproto.deltagerber.model.gerber.aperture.Aperture;
-import com.deltaproto.deltagerber.model.gerber.operation.GraphicsObject;
 
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -129,12 +129,6 @@ public class SVGRenderer {
             "preserveAspectRatio=\"xMidYMid meet\">\n",
             minX, minY, width, height));
 
-        // Style definitions (kept for backwards compatibility with any CSS-based elements)
-        svg.append("<style>\n");
-        svg.append(String.format("  .dark { fill: %s; stroke: %s; }\n", darkColor, darkColor));
-        svg.append(String.format("  .clear { fill: %s; stroke: %s; }\n", clearColor, clearColor));
-        svg.append("</style>\n");
-
         // Set colors and flipY in svgOptions for direct fill attributes and arc direction
         svgOptions.setDarkColor(darkColor).setClearColor(clearColor).setFlipY(flipY);
 
@@ -144,6 +138,14 @@ public class SVGRenderer {
             String def = aperture.toSvgDef("ap" + aperture.getDCode(), svgOptions);
             svg.append("  ").append(def).append("\n");
         }
+
+        // Group objects by polarity transitions and generate masks for clear groups
+        List<PolarityMaskHelper.PolarityGroup> groups =
+            PolarityMaskHelper.groupByPolarity(doc.getObjects());
+        SvgOptions maskOptions = svgOptions.copy();
+        maskOptions.setDarkColor("black").setClearColor("black");
+        String maskRect = PolarityMaskHelper.createMaskRect(minX, minY, width, height, 1);
+        PolarityMaskHelper.generateMaskDefs(svg, groups, "cm", maskRect, maskOptions);
         svg.append("</defs>\n");
 
         // Apply Y flip if needed
@@ -160,13 +162,8 @@ public class SVGRenderer {
                 minX, minY, width, height, backgroundColor));
         }
 
-        // Render all objects
-        for (GraphicsObject obj : doc.getObjects()) {
-            String objSvg = obj.toSvg(svgOptions);
-            if (objSvg != null && !objSvg.isEmpty()) {
-                svg.append("  ").append(objSvg).append("\n");
-            }
-        }
+        // Render objects with mask wrapping for clear polarity groups
+        PolarityMaskHelper.renderWithMasks(svg, groups, "cm", svgOptions);
 
         if (flipY) {
             svg.append("</g>\n");

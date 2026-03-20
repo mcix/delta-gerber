@@ -66,7 +66,6 @@ public class PolygonAperture extends Aperture {
     public String toSvgDef(String id, SvgOptions options) {
         double r = outerDiameter / 2;
         double rotRad = Math.toRadians(rotation);
-        String darkColor = options.getDarkColor();
 
         // Generate polygon points (exact for both modes - polygons are exact by definition)
         StringBuilder points = new StringBuilder();
@@ -85,8 +84,8 @@ public class PolygonAperture extends Aperture {
                 double hr = holeDiameter / 2;
                 pathData = pathData + " " + reverseCirclePath(0, 0, hr, options.getCircleSegments());
             }
-            return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
-                id, pathData, darkColor);
+            return String.format("<path id=\"%s\" d=\"%s\" fill-rule=\"evenodd\"/>",
+                id, pathData);
         } else {
             // Exact mode
             if (hasHole()) {
@@ -106,12 +105,12 @@ public class PolygonAperture extends Aperture {
                 pathData.append(String.format(java.util.Locale.US,
                     "M %.6f 0 A %.6f %.6f 0 1 0 %.6f 0 A %.6f %.6f 0 1 0 %.6f 0 Z",
                     hr, hr, hr, -hr, hr, hr, hr));
-                return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
-                    id, pathData, darkColor);
+                return String.format("<path id=\"%s\" d=\"%s\" fill-rule=\"evenodd\"/>",
+                    id, pathData);
             } else {
                 return String.format(java.util.Locale.US,
-                    "<polygon id=\"%s\" points=\"%s\" fill=\"%s\"/>",
-                    id, points, darkColor);
+                    "<polygon id=\"%s\" points=\"%s\"/>",
+                    id, points);
             }
         }
     }

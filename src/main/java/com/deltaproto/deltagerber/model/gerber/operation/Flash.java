@@ -1,6 +1,7 @@
 package com.deltaproto.deltagerber.model.gerber.operation;
 
 import com.deltaproto.deltagerber.model.gerber.BoundingBox;
+import com.deltaproto.deltagerber.model.gerber.Polarity;
 import com.deltaproto.deltagerber.model.gerber.aperture.Aperture;
 import com.deltaproto.deltagerber.renderer.svg.SvgOptions;
 
@@ -62,8 +63,10 @@ public class Flash extends GraphicsObject {
 
     @Override
     public String toSvg(SvgOptions options) {
-        // Flash uses <use> elements referencing aperture definitions
-        // The aperture defs already have fill colors set directly, no CSS class needed
+        // Flash uses <use> elements referencing aperture definitions.
+        // Fill color is set on the <use> element based on polarity, so it
+        // inherits into the aperture def shapes (which have no explicit fill).
+        String color = polarity == Polarity.DARK ? options.getDarkColor() : options.getClearColor();
 
         // Build transform string for rotation, scaling, mirroring
         StringBuilder transform = new StringBuilder();
@@ -94,13 +97,13 @@ public class Flash extends GraphicsObject {
         // If we have transforms other than position, use transform attribute
         if (rotation != 0 || scale != 1.0 || mirrorX || mirrorY) {
             return String.format(Locale.US,
-                "<use href=\"#%s%d\" transform=\"%s\"/>",
-                prefix, aperture.getDCode(), transform.toString());
+                "<use href=\"#%s%d\" fill=\"%s\" transform=\"%s\"/>",
+                prefix, aperture.getDCode(), color, transform.toString());
         } else {
             // Simple case: just position
             return String.format(Locale.US,
-                "<use href=\"#%s%d\" x=\"%.6f\" y=\"%.6f\"/>",
-                prefix, aperture.getDCode(), x, y);
+                "<use href=\"#%s%d\" x=\"%.6f\" y=\"%.6f\" fill=\"%s\"/>",
+                prefix, aperture.getDCode(), x, y, color);
         }
     }
 

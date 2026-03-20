@@ -57,7 +57,6 @@ public class ObroundAperture extends Aperture {
         double hw = width / 2;
         double hh = height / 2;
         double r = Math.min(hw, hh);
-        String darkColor = options.getDarkColor();
 
         if (options.isPolygonize()) {
             // Polygonized mode: approximate arcs with line segments
@@ -65,8 +64,8 @@ public class ObroundAperture extends Aperture {
             if (hasHole()) {
                 pathData = pathData + " " + reverseCirclePath(0, 0, holeDiameter / 2, options.getCircleSegments());
             }
-            return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
-                id, pathData, darkColor);
+            return String.format("<path id=\"%s\" d=\"%s\" fill-rule=\"evenodd\"/>",
+                id, pathData);
         } else {
             // Exact mode: use SVG arc commands
             StringBuilder path = new StringBuilder();
@@ -96,10 +95,10 @@ public class ObroundAperture extends Aperture {
                 path.append(String.format(java.util.Locale.US,
                     " M %.6f 0 A %.6f %.6f 0 1 0 %.6f 0 A %.6f %.6f 0 1 0 %.6f 0 Z",
                     hr, hr, hr, -hr, hr, hr, hr));
-                return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\" fill-rule=\"evenodd\"/>",
-                    id, path, darkColor);
+                return String.format("<path id=\"%s\" d=\"%s\" fill-rule=\"evenodd\"/>",
+                    id, path);
             } else {
-                return String.format("<path id=\"%s\" d=\"%s\" fill=\"%s\"/>", id, path, darkColor);
+                return String.format("<path id=\"%s\" d=\"%s\"/>", id, path);
             }
         }
     }
