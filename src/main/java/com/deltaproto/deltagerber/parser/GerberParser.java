@@ -198,6 +198,21 @@ public class GerberParser {
             return;
         }
 
+        // Try non-standard aperture types (e.g., EAGLE's OC8 = octagon)
+        // OC<n> = regular n-sided polygon, rotated so a flat edge is at the top
+        Pattern ocPattern = Pattern.compile("ADD(\\d+)OC(\\d+),([\\d.]+)(?:\\*)?$");
+        Matcher ocMatcher = ocPattern.matcher(content);
+        if (ocMatcher.find()) {
+            int dCode = Integer.parseInt(ocMatcher.group(1));
+            int numVertices = Integer.parseInt(ocMatcher.group(2));
+            double diameter = Double.parseDouble(ocMatcher.group(3)) * unit.toMm(1.0);
+            // EAGLE octagons have a flat edge at the top, so rotate by half a vertex angle
+            double rotation = 180.0 / numVertices;
+            Aperture aperture = new PolygonAperture(dCode, diameter, numVertices, rotation);
+            document.addAperture(aperture);
+            return;
+        }
+
         // Try macro aperture: ADD<dcode><macroname>,<params>
         Pattern macroPattern = Pattern.compile("ADD(\\d+)([A-Za-z_][A-Za-z0-9_]*)(?:,(.*))?$");
         Matcher macroMatcher = macroPattern.matcher(content);
