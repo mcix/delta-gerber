@@ -1017,6 +1017,137 @@ public class ApertureVisualTest {
                 "%LR90*%\nX2750000Y1000000D03*")
         ));
 
+        // ===== DEPRECATED G-codes =====
+        cases.add(new ApertureTestCase(
+            "Deprecated G54 Aperture Select",
+            "G54D10* — deprecated aperture select prefix",
+            createPlotGerber("%ADD10C,1.0*%",
+                "G54D10*\nX1000000Y1000000D03*")
+        ));
+
+        cases.add(new ApertureTestCase(
+            "Deprecated G54 Combined",
+            "G54D10* followed by G54D11* on separate lines",
+            createPlotGerber("%ADD10C,0.8*%\n%ADD11R,1.0X0.5*%",
+                "G54D10*\nX500000Y1000000D03*\nG54D11*\nX2000000Y1000000D03*")
+        ));
+
+        cases.add(new ApertureTestCase(
+            "Deprecated G70 Unit Inches",
+            "G70* sets unit to inches",
+            """
+            G04 Deprecated unit test*
+            %FSLAX24Y24*%
+            G70*
+            %ADD10C,0.040*%
+            D10*
+            X0Y0D03*
+            M02*
+            """
+        ));
+
+        cases.add(new ApertureTestCase(
+            "Deprecated G71 Unit MM",
+            "G71* sets unit to millimeters",
+            """
+            G04 Deprecated unit test*
+            %FSLAX26Y26*%
+            G71*
+            %ADD10C,1.0*%
+            D10*
+            X0Y0D03*
+            M02*
+            """
+        ));
+
+        // ===== IMAGE POLARITY =====
+        cases.add(new ApertureTestCase(
+            "ImagePolarity POS",
+            "%IPPOS*% — positive image (default, no effect)",
+            """
+            G04 Image Polarity POS*
+            %FSLAX26Y26*%
+            %MOMM*%
+            %IPPOS*%
+            %ADD10C,1.0*%
+            D10*
+            X0Y0D03*
+            M02*
+            """
+        ));
+
+        // ===== OFFSET =====
+        cases.add(new ApertureTestCase(
+            "Offset Zero",
+            "%OFA0B0*% — zero offset (no effect)",
+            """
+            G04 Offset test*
+            %FSLAX26Y26*%
+            %MOMM*%
+            %OFA0B0*%
+            %ADD10C,1.0*%
+            D10*
+            X0Y0D03*
+            M02*
+            """
+        ));
+
+        // ===== STEP AND REPEAT =====
+        cases.add(new ApertureTestCase(
+            "StepRepeat 3x1 Horizontal",
+            "3 copies spaced 1.5mm apart horizontally",
+            """
+            G04 Step and Repeat test*
+            %FSLAX26Y26*%
+            %MOMM*%
+            %ADD10C,0.5*%
+            %SRX3Y1I1.500000J0*%
+            D10*
+            X0Y500000D03*
+            %SR*%
+            M02*
+            """
+        ));
+
+        cases.add(new ApertureTestCase(
+            "StepRepeat 2x2 Grid",
+            "2x2 grid of circles spaced 1.5mm apart",
+            """
+            G04 Step and Repeat grid test*
+            %FSLAX26Y26*%
+            %MOMM*%
+            %ADD10C,0.5*%
+            %SRX2Y2I1.500000J1.500000*%
+            D10*
+            X0Y0D03*
+            %SR*%
+            M02*
+            """
+        ));
+
+        cases.add(new ApertureTestCase(
+            "StepRepeat 3x2 with Rectangle",
+            "3x2 grid of rectangles",
+            """
+            G04 Step and Repeat rect grid*
+            %FSLAX26Y26*%
+            %MOMM*%
+            %ADD10R,0.6X0.3*%
+            %SRX3Y2I1.000000J1.000000*%
+            D10*
+            X0Y0D03*
+            %SR*%
+            M02*
+            """
+        ));
+
+        // ===== UTF-8 BOM =====
+        cases.add(new ApertureTestCase(
+            "UTF8BOM Circle with BOM",
+            "File starting with UTF-8 BOM marker",
+            "\uFEFF" + createGerber("%ADD10C,1.0*%", 10)
+        ));
+
         return cases;
     }
 

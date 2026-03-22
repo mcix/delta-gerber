@@ -182,6 +182,13 @@ public class GerberLexer {
             return new Token(TokenType.OBJECT_ATTRIBUTE, cmd, line);
         } else if (cmd.startsWith("TD")) {
             return new Token(TokenType.DELETE_ATTRIBUTE, cmd, line);
+        } else if (cmd.startsWith("IP")) {
+            return new Token(TokenType.IMAGE_POLARITY, cmd, line);
+        } else if (cmd.startsWith("OF")) {
+            return new Token(TokenType.OFFSET, cmd, line);
+        } else if (cmd.startsWith("IN") || cmd.startsWith("LN") || cmd.startsWith("AS")
+                || cmd.startsWith("MI") || cmd.startsWith("SF") || cmd.startsWith("IR")) {
+            return null; // Deprecated informational/transform commands — safely skip
         }
         return new Token(TokenType.UNKNOWN, cmd, line);
     }
@@ -241,6 +248,26 @@ public class GerberLexer {
                         case 4 -> TokenType.COMMENT;
                         default -> TokenType.UNKNOWN;
                     };
+                    // G54/G55: deprecated aperture select prefix — skip the G-code only,
+                    // don't consume the trailing * or D-code that follows
+                    if (gCode == 54 || gCode == 55) {
+                        pos = pos + 1; // skip 'G'
+                        while (pos < len && Character.isDigit(line.charAt(pos))) pos++; // skip digits
+                        continue; // let the loop parse the following D-code
+                    }
+
+                    // G70/G71: deprecated unit commands
+                    if (gCode == 70) {
+                        tokens.add(new PositionedToken(new Token(TokenType.UNIT, "MOIN", lineNum), basePos + pos));
+                        pos = gEnd;
+                        continue;
+                    }
+                    if (gCode == 71) {
+                        tokens.add(new PositionedToken(new Token(TokenType.UNIT, "MOMM", lineNum), basePos + pos));
+                        pos = gEnd;
+                        continue;
+                    }
+
                     // Handle G04 comments specially
                     if (gCode == 4) {
                         int starPos = line.indexOf('*', pos);

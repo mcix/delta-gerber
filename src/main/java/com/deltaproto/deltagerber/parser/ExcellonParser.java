@@ -77,6 +77,11 @@ public class ExcellonParser {
         long startTime = System.currentTimeMillis();
         log.trace("Starting Excellon parse, content length: {} chars", content.length());
 
+        // Strip UTF-8 BOM if present
+        if (content.startsWith("\uFEFF")) {
+            content = content.substring(1);
+        }
+
         document = new DrillDocument();
         currentTool = null;
         currentX = 0;
@@ -347,6 +352,14 @@ public class ExcellonParser {
         } else if (line.startsWith("G01")) {
             // Linear move - parse coordinates if present
             interpolationMode = InterpolationMode.LINEAR;
+            parseGCodeWithCoordinates(line.substring(3));
+        } else if (line.startsWith("G02")) {
+            // Clockwise arc routing
+            interpolationMode = InterpolationMode.CW_ARC;
+            parseGCodeWithCoordinates(line.substring(3));
+        } else if (line.startsWith("G03")) {
+            // Counter-clockwise arc routing
+            interpolationMode = InterpolationMode.CCW_ARC;
             parseGCodeWithCoordinates(line.substring(3));
         } else if (line.startsWith("G40")) {
             // Cutter compensation off - just ignore

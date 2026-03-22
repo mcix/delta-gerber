@@ -34,6 +34,8 @@ public enum TokenType {
 
     // Polarity
     POLARITY,           // %LPD*% or %LPC*%
+    IMAGE_POLARITY,     // %IP...% (deprecated: image polarity POS/NEG)
+    OFFSET,             // %OF...% (deprecated: image offset)
 
     // Aperture transforms
     LOAD_ROTATION,      // %LR<angle>*%

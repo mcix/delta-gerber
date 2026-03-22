@@ -57,6 +57,11 @@ public class GerberParser {
         long startTime = System.currentTimeMillis();
         log.trace("Starting Gerber parse, content length: {} chars", content.length());
 
+        // Strip UTF-8 BOM if present
+        if (content.startsWith("\uFEFF")) {
+            content = content.substring(1);
+        }
+
         document = new GerberDocument();
         GerberLexer lexer = new GerberLexer();
 
@@ -92,6 +97,10 @@ public class GerberParser {
             case LOAD_ROTATION -> parseLoadRotation(token);
             case LOAD_SCALING -> parseLoadScaling(token);
             case LOAD_MIRRORING -> parseLoadMirroring(token);
+            case IMAGE_POLARITY -> parseImagePolarity(token);
+            case OFFSET -> parseOffset(token);
+            case STEP_REPEAT -> parseStepRepeat(token);
+            case BLOCK_APERTURE -> parseBlockAperture(token);
             case COORDINATE -> {
                 // If there are already pending coordinates without an explicit D-code,
                 // execute the modal (last active) D-code before parsing the new coordinate.
@@ -345,6 +354,79 @@ public class GerberParser {
             loadMirrorX = mode.contains("X");
             loadMirrorY = mode.contains("Y");
         }
+    }
+
+    // Step and Repeat state
+    private int srStartIndex = -1;
+    private int srRepeatX = 1, srRepeatY = 1;
+    private double srStepX = 0, srStepY = 0;
+
+    private void parseImagePolarity(Token token) {
+        String content = token.getContent();
+        // %IPPOS*% or %IPNEG*%
+        // NEG inverts all polarities
+        if (content.contains("NEG")) {
+            document.addWarning("Image polarity NEG detected — polarity inversion not fully supported");
+        }
+        // POS is the default, no action needed
+    }
+
+    private void parseOffset(Token token) {
+        String content = token.getContent();
+        // %OFA<x>B<y>*% — image offset, usually zero
+        // Parse but ignore non-zero values with a warning
+        Pattern pattern = Pattern.compile("OFA([\\d.+-]+)B([\\d.+-]+)");
+        Matcher matcher = pattern.matcher(content);
+        if (matcher.find()) {
+            double offsetA = Double.parseDouble(matcher.group(1));
+            double offsetB = Double.parseDouble(matcher.group(2));
+            if (offsetA != 0 || offsetB != 0) {
+                document.addWarning("Non-zero image offset detected: A=" + offsetA + " B=" + offsetB);
+            }
+        }
+    }
+
+    private void parseStepRepeat(Token token) {
+        String content = token.getContent();
+        // Close: "SR" with no parameters
+        if (content.equals("SR") || !content.contains("X")) {
+            if (srStartIndex >= 0) {
+                List<GraphicsObject> allObjects = document.getObjects();
+                List<GraphicsObject> srObjects = new ArrayList<>(
+                    allObjects.subList(srStartIndex, allObjects.size()));
+                for (int iy = 0; iy < srRepeatY; iy++) {
+                    for (int ix = 0; ix < srRepeatX; ix++) {
+                        if (ix == 0 && iy == 0) continue;
+                        double offsetX = ix * srStepX;
+                        double offsetY = iy * srStepY;
+                        for (GraphicsObject obj : srObjects) {
+                            document.addObject(obj.translate(offsetX, offsetY));
+                        }
+                    }
+                }
+                srStartIndex = -1;
+            }
+            return;
+        }
+        // Open: SRX<n>Y<n>I<step>J<step>
+        Pattern pattern = Pattern.compile("SRX(\\d+)Y(\\d+)I([\\d.+-]+)J([\\d.+-]+)");
+        Matcher matcher = pattern.matcher(content);
+        if (matcher.find()) {
+            srRepeatX = Integer.parseInt(matcher.group(1));
+            srRepeatY = Integer.parseInt(matcher.group(2));
+            double f = unit.toMm(1.0);
+            srStepX = Double.parseDouble(matcher.group(3)) * f;
+            srStepY = Double.parseDouble(matcher.group(4)) * f;
+            srStartIndex = document.getObjects().size();
+        }
+    }
+
+    private void parseBlockAperture(Token token) {
+        String content = token.getContent();
+        if (content.length() > 2 && content.contains("D")) {
+            document.addWarning("Block aperture (AB) not fully supported: " + content);
+        }
+        // AB close (just "AB") is silently ignored
     }
 
     private double pendingX = Double.NaN;
