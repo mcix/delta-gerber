@@ -26,7 +26,7 @@ import java.util.*;
  *
  * Endpoints:
  * - GET /           — serves the HTML viewer app
- * - POST /api/render — receives files with metadata, returns multi-layer + realistic SVGs
+ * - POST /api/gerber/render — receives files with metadata, returns multi-layer + realistic SVGs
  */
 public class GerberViewerServer {
 
@@ -42,7 +42,7 @@ public class GerberViewerServer {
     public void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/", new StaticHandler());
-        server.createContext("/api/render", new RenderHandler());
+        server.createContext("/api/gerber/render", new RenderHandler());
         server.setExecutor(null);
         server.start();
         log.info("Gerber Viewer Server started at http://localhost:{}", port);
@@ -308,7 +308,7 @@ public class GerberViewerServer {
 
     private static String indexHtmlCache;
 
-    private static String getIndexHtml() {
+    public static String getIndexHtml() {
         if (indexHtmlCache != null) return indexHtmlCache;
         try (InputStream is = GerberViewerServer.class.getResourceAsStream("/web/index.html")) {
             if (is != null) {

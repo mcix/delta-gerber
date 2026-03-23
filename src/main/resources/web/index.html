@@ -323,6 +323,9 @@
     </div>
 
     <script>
+        // ===== Config =====
+        const API_BASE = window.GERBER_API_BASE || '';
+
         // ===== State =====
         let layers = [];
         let projectFiles = [];  // [{name, content, fileType, layerType, color}]
@@ -566,7 +569,7 @@
                 parts.push(encoder.encode('\n'));
             }
             const body = new Blob(parts);
-            const resp = await fetch('/api/render', {method: 'POST', body});
+            const resp = await fetch(API_BASE + '/api/gerber/render', {method: 'POST', body});
             if (!resp.ok) throw new Error('Server error: ' + resp.status);
             return await resp.json();
         }
@@ -604,7 +607,7 @@
             progressBar.classList.add('progress-bar-indeterminate');
             loadingStatus.textContent = 'Loading Arduino Uno example...';
             try {
-                const resp = await fetch('/arduino-uno-example.zip');
+                const resp = await fetch(API_BASE + '/arduino-uno-example.zip');
                 if (!resp.ok) throw new Error('Failed to fetch example');
                 const blob = await resp.blob();
                 const file = new File([blob], 'arduino-uno-example.zip', {type: 'application/zip'});
