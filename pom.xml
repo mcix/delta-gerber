@@ -6,7 +6,7 @@
 
     <groupId>com.deltaproto</groupId>
     <artifactId>delta-gerber</artifactId>
-    <version>1.0.8-SNAPSHOT</version>
+    <version>1.0.8</version>
     <packaging>jar</packaging>
 
     <name>Delta Gerber</name>
@@ -99,6 +99,32 @@
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.deltaproto.deltagerber.web.GerberViewerServer</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <finalName>delta-gerber-${project.version}</finalName>
+                    <appendAssemblyId>true</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

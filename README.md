@@ -22,7 +22,7 @@ Generate photorealistic top and bottom views of your PCB with proper layer stack
 <dependency>
     <groupId>com.deltaproto</groupId>
     <artifactId>delta-gerber</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
 </dependency>
 ```
 
@@ -78,14 +78,24 @@ Generate photorealistic top and bottom views of your PCB with proper layer stack
 - Recent project history with re-open support
 - Stateless server architecture (browser owns the data)
 
-## Quick Start
+## Quick Start — Download and Run
+
+Download the standalone JAR from the [latest release](https://github.com/Delta-Proto/delta-gerber/releases/latest) and run:
 
 ```bash
-mvn clean install
-mvn exec:java -Dexec.mainClass="com.deltaproto.deltagerber.web.GerberViewerServer"
+java -jar delta-gerber-1.0.8-jar-with-dependencies.jar
 ```
 
-Open http://localhost:938 and drop a Gerber ZIP file onto the viewer.
+Open http://localhost:938 and drop a Gerber ZIP file onto the viewer, or click **"Try Example"** to load the bundled Arduino Uno board.
+
+> Requires Java 17+. No other dependencies needed.
+
+### Build from Source
+
+```bash
+mvn clean package
+java -jar target/delta-gerber-1.0.8-jar-with-dependencies.jar
+```
 
 ## Usage as Library
 
