@@ -64,7 +64,7 @@ public class GerberViewerServer {
             if (path.equals("/") || path.equals("/index.html")) {
                 String html = getIndexHtml();
                 sendResponse(exchange, 200, "text/html", html);
-            } else if (path.equals("/arduino-uno-example.zip")) {
+            } else if (path.equals("/api/gerber/arduino-uno-example.zip")) {
                 try (InputStream is = GerberViewerServer.class.getResourceAsStream("/web/arduino-uno-example.zip")) {
                     if (is != null) {
                         byte[] data = is.readAllBytes();
@@ -237,7 +237,7 @@ public class GerberViewerServer {
         LAYER_COLORS.put("drl", "#00ffff"); LAYER_COLORS.put("xln", "#00ffff"); LAYER_COLORS.put("drd", "#00ffff");
     }
 
-    static String getLayerColor(String filename) {
+    public static String getLayerColor(String filename) {
         String lower = filename.toLowerCase();
         for (Map.Entry<String, String> entry : LAYER_COLORS.entrySet()) {
             if (lower.contains(entry.getKey())) return entry.getValue();
@@ -245,7 +245,7 @@ public class GerberViewerServer {
         return "#aaaaaa";
     }
 
-    static String renderRealisticSide(List<MultiLayerSVGRenderer.Layer> allLayers, boolean topSide) {
+    public static String renderRealisticSide(List<MultiLayerSVGRenderer.Layer> allLayers, boolean topSide) {
         try {
             List<MultiLayerSVGRenderer.Layer> sideLayers = new ArrayList<>();
             for (MultiLayerSVGRenderer.Layer layer : allLayers) {
