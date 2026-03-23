@@ -1,12 +1,12 @@
 # Delta Gerber
 
-A Java library for parsing Gerber RS-274X and Excellon drill files with SVG rendering and realistic PCB visualization.
+A Java library for parsing Gerber RS-274X and Excellon NC drill files with SVG rendering, realistic PCB visualization, and an interactive web viewer.
 
 ![Delta Gerber Screenshot](Screenshot.png)
 
 ## Realistic PCB Rendering
 
-Generate photorealistic top and bottom views of your PCB with proper layer stacking — FR4 substrate, copper, soldermask, silkscreen, and drill holes.
+Generate photorealistic top and bottom views of your PCB with proper layer stacking — FR4 substrate, copper with HASL/ENIG finish, semi-transparent soldermask, silkscreen, and drill holes with true SVG transparency.
 
 | Top Side | Bottom Side |
 |----------|-------------|
@@ -18,25 +18,61 @@ Generate photorealistic top and bottom views of your PCB with proper layer stack
 <dependency>
     <groupId>com.deltaproto</groupId>
     <artifactId>delta-gerber</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
 </dependency>
 ```
 
 ## Features
 
-- Parse Gerber RS-274X files (.gbr, .ger, .gtl, .gbl, .gts, .gbs, .gto, .gbo, etc.)
-- Parse Excellon drill files (.drl, .txt, .xln)
-- Render PCB layers as SVG with proper scaling
-- Support for all standard apertures (circle, rectangle, obround, polygon)
-- Extended aperture support (OCn octagon pads from EAGLE)
-- Aperture macros with primitives (circle, line, outline, polygon, moire, thermal)
-- Region fills (G36/G37)
+### Gerber Parsing
+- Full RS-274X support (.gbr, .ger, .gtl, .gbl, .gts, .gbs, .gto, .gbo, .gtp, .gbp, .gko, .gm, etc.)
+- All standard apertures: circle (C), rectangle (R), obround (O), polygon (P)
+- Aperture macros with primitives (circle, vector line, center line, outline, polygon, thermal)
+- Region fills (G36/G37) with multiple contours
 - Arc interpolation (G02/G03) with single and multi-quadrant modes
-- Layer polarity (LPD/LPC)
-- Step and repeat (SR)
-- Realistic PCB rendering with physically accurate layer stacking
-- Interactive web viewer with pan/zoom and layer toggling
+- Layer polarity (LPD/LPC) with true SVG mask-based transparency
+- Step and Repeat (%SR%) for panelized boards
+- Aperture transforms: rotation (LR), scaling (LS), mirroring (LM)
+- Image polarity (%IP%) and offset (%OF%) recognition
+
+### Excellon Drill Parsing
+- Standard Excellon NC drill format (.drl, .txt, .xln, .drd)
+- Tool definitions with diameter
+- Drill hits and routed slots (G85, M15/M16/M17 routing mode)
+- Plated (PTH) and non-plated (NPTH) hole distinction
+- Absolute and incremental coordinate modes (G90/G91)
+- Metric and inch units with automatic format detection
+
+### CAD Tool Compatibility
+- **Altium Designer** — Gerber X2 attributes, mechanical layer outlines (.GM, .GM1), format detection
+- **Cadence Allegro** — Non-standard drill format with holesize comments, M00 tool separators, repeat codes (R02X...)
+- **EAGLE** — Non-standard OC8/OCn octagon aperture type, combined FS+MO command blocks
+- **KiCad** — Standard Gerber X2 output with file function attributes
+- **Legacy RS-274X** — Deprecated G-codes (G54, G70/G71), deprecated extended commands (%IN, %LN, %AS, %MI, %SF, %IR%)
+- **UTF-8 BOM** handling for files exported from Windows tools
+
+### SVG Rendering
+- High-fidelity SVG output with native SVG elements (circles, arcs, paths)
+- Polygonized mode for geometry processing
 - Multi-layer composite rendering with configurable colors and opacity
+- Realistic PCB rendering with physically accurate layer stacking:
+  - FR4 substrate, copper (silver under mask / gold at exposed pads)
+  - Semi-transparent soldermask with inverted mask for pad openings
+  - Silkscreen nested inside soldermask (only visible where mask is present)
+  - Drill holes punching through all layers as true SVG transparency
+
+### Web Viewer
+- Interactive pan/zoom with mouse wheel and drag
+- Three visualization modes: All Layers, Board Top, Board Bottom
+- Layer type auto-detection from filename and content analysis
+- Layer type dropdowns for manual override
+- Select all/none checkbox with tri-state indicator
+- Top/Bottom quick-filter buttons
+- Hover-to-solo: preview individual layers by hovering
+- Center-truncated filenames with instant tooltips
+- Browser-side ZIP extraction and file persistence (IndexedDB)
+- Recent project history with re-open support
+- Stateless server architecture (browser owns the data)
 
 ## Quick Start
 
@@ -45,31 +81,7 @@ mvn clean install
 mvn exec:java -Dexec.mainClass="com.deltaproto.deltagerber.web.GerberViewerServer"
 ```
 
-Open http://localhost:938 and upload a Gerber ZIP archive.
-
-## Web Viewer
-
-The built-in web viewer provides three visualization modes:
-
-- **All Layers** — Traditional overlay of all PCB layers with configurable colors and opacity
-- **Board Top** — Realistic top-side rendering with soldermask, silkscreen, and copper finish
-- **Board Bottom** — Realistic bottom-side rendering (horizontally mirrored)
-
-Features: drag-to-pan, scroll-to-zoom, layer toggling via sidebar, layer type reassignment, ZIP file upload, and recent project history.
-
-## Aperture Visual Test
-
-The library includes a comprehensive visual test for aperture rendering that compares our implementation against reference images.
-
-[View Aperture Visual Test](https://htmlpreview.github.io/?https://github.com/Delta-Proto/delta-gerber/blob/main/generated/aperture-visual-test.html)
-
-## Project Structure
-
-- `src/main/java/com/deltaproto/deltagerber/parser` - Gerber and Excellon parsers
-- `src/main/java/com/deltaproto/deltagerber/lexer` - Tokenizer for Gerber files
-- `src/main/java/com/deltaproto/deltagerber/model` - Data model for Gerber documents
-- `src/main/java/com/deltaproto/deltagerber/renderer/svg` - SVG rendering engine
-- `src/main/java/com/deltaproto/deltagerber/web` - Web viewer server
+Open http://localhost:938 and drop a Gerber ZIP file onto the viewer.
 
 ## Usage as Library
 
@@ -78,32 +90,63 @@ The library includes a comprehensive visual test for aperture rendering that com
 GerberParser parser = new GerberParser();
 GerberDocument doc = parser.parse(gerberContent);
 
-// Render to SVG
-GerberToSvgConverter converter = new GerberToSvgConverter();
-String svg = converter.convert(doc);
+// Render a single layer to SVG
+SVGRenderer renderer = new SVGRenderer();
+String svg = renderer.render(doc);
 
 // Parse an Excellon drill file
 ExcellonParser drillParser = new ExcellonParser();
-ExcellonDocument drillDoc = drillParser.parse(excellonContent);
+DrillDocument drillDoc = drillParser.parse(excellonContent);
 ```
 
-### Realistic Rendering
+### Multi-Layer Rendering
 
 ```java
 MultiLayerSVGRenderer renderer = new MultiLayerSVGRenderer();
+List<MultiLayerSVGRenderer.Layer> layers = new ArrayList<>();
+layers.add(new MultiLayerSVGRenderer.Layer("top-copper", copperDoc)
+    .setColor("#e94560").setOpacity(0.85));
+layers.add(new MultiLayerSVGRenderer.Layer("drill", drillDoc)
+    .setColor("#00ffff"));
 
-// Build layer map
-Map<LayerType, Object> layers = new LinkedHashMap<>();
-layers.put(LayerType.OUTLINE, outlineDoc);
-layers.put(LayerType.COPPER_TOP, copperTopDoc);
-layers.put(LayerType.SOLDERMASK_TOP, soldermaskTopDoc);
-layers.put(LayerType.SILKSCREEN_TOP, silkscreenTopDoc);
-layers.put(LayerType.DRILL, drillDoc);
-
-// Render realistic top/bottom views
-String topSvg = renderer.renderRealistic(layers, true);
-String bottomSvg = renderer.renderRealistic(layers, false);
+String svg = renderer.render(layers);
 ```
+
+### Realistic PCB Rendering
+
+```java
+MultiLayerSVGRenderer renderer = new MultiLayerSVGRenderer();
+List<MultiLayerSVGRenderer.Layer> layers = new ArrayList<>();
+
+layers.add(new MultiLayerSVGRenderer.Layer("outline", outlineDoc)
+    .setLayerType(LayerType.OUTLINE));
+layers.add(new MultiLayerSVGRenderer.Layer("copper", copperDoc)
+    .setLayerType(LayerType.COPPER_TOP));
+layers.add(new MultiLayerSVGRenderer.Layer("mask", soldermaskDoc)
+    .setLayerType(LayerType.SOLDERMASK_TOP));
+layers.add(new MultiLayerSVGRenderer.Layer("silk", silkscreenDoc)
+    .setLayerType(LayerType.SILKSCREEN_TOP));
+layers.add(new MultiLayerSVGRenderer.Layer("drill", drillDoc)
+    .setLayerType(LayerType.DRILL));
+
+String realisticSvg = renderer.renderRealistic(layers);
+```
+
+## Aperture Visual Test
+
+The library includes a comprehensive visual test catalog with 127 test cases covering all aperture types, macros, regions, polarity, transforms, and legacy format support.
+
+[View Aperture Visual Test](https://htmlpreview.github.io/?https://github.com/Delta-Proto/delta-gerber/blob/main/generated/aperture-visual-test.html)
+
+## Project Structure
+
+- `src/main/java/com/deltaproto/deltagerber/parser` — Gerber and Excellon parsers
+- `src/main/java/com/deltaproto/deltagerber/lexer` — Tokenizer for Gerber files
+- `src/main/java/com/deltaproto/deltagerber/model` — Data model for Gerber/drill documents
+- `src/main/java/com/deltaproto/deltagerber/renderer/svg` — SVG rendering engine
+- `src/main/java/com/deltaproto/deltagerber/web` — Web viewer server
+- `src/main/resources/web` — Web viewer HTML/CSS/JS
+- `testdata` — Sample Gerber projects for testing
 
 ## License
 
