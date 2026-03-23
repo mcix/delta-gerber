@@ -57,6 +57,11 @@
             cursor: pointer; max-width: 100px;
         }
         .layer-type-select:focus { outline: 1px solid #e94560; }
+        .side-btn {
+            background: #0f3460; color: #888; border: none; padding: 2px 8px;
+            border-radius: 4px; cursor: pointer; font-size: 0.7rem; transition: background 0.2s, color 0.2s;
+        }
+        .side-btn:hover { background: #1a4f7a; color: #eee; }
         .layer-list { display: flex; flex-direction: column; gap: 4px; }
         .layer-item {
             display: flex; align-items: center; gap: 10px; padding: 10px 12px;
@@ -67,7 +72,21 @@
         .layer-item .color-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
         .layer-item .name {
             flex: 1; font-size: 0.9rem; white-space: nowrap;
-            overflow: hidden; text-overflow: ellipsis;
+            overflow: hidden; display: flex; min-width: 0;
+        }
+        .layer-item .name-start {
+            overflow: hidden; text-overflow: ellipsis; flex-shrink: 1;
+        }
+        .layer-item .name-ext {
+            flex-shrink: 0;
+        }
+        .layer-item .name[title] { position: relative; }
+        .layer-item .name:hover::after {
+            content: attr(title); position: absolute; left: 0; top: 100%;
+            background: #16213e; color: #eee; padding: 4px 8px; border-radius: 4px;
+            font-size: 0.8rem; white-space: nowrap; z-index: 100;
+            border: 1px solid #0f3460; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            pointer-events: none;
         }
         .viewer-container {
             flex: 1; position: relative; overflow: hidden; background: #0d0d1a;
@@ -129,7 +148,15 @@
     <div class="main-container">
         <aside class="sidebar">
             <div>
-                <h2>Layers</h2>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                    <input type="checkbox" id="select-all-layers" onclick="toggleAllLayers()"
+                        style="width:16px; height:16px; accent-color:#e94560;">
+                    <h2 style="margin-bottom:0;">Layers</h2>
+                    <div style="display:flex; gap:4px; margin-left:auto;">
+                        <button class="side-btn" onclick="selectSide('top')" title="Show top layers only">Top</button>
+                        <button class="side-btn" onclick="selectSide('bottom')" title="Show bottom layers only">Bot</button>
+                    </div>
+                </div>
                 <div class="layer-list" id="layer-list">
                     <div class="no-layers">No layers loaded</div>
                 </div>
@@ -209,10 +236,21 @@
             return 'unknown';
         }
 
-        function detectPcbLayerType(name, fileType) {
+        function detectPcbLayerType(name, fileType, content) {
             const lower = name.toLowerCase();
             if (fileType === 'drill') return 'DRILL';
-            if (/gko|gm1|edge|outline|boardoutline|profile/.test(lower)) return 'OUTLINE';
+            if (/\.gko$|\.gm\d*$|edge|outline|boardoutline|profile/.test(lower)) {
+                // Only assign OUTLINE if the file has actual connected drawing content
+                if (!content) return 'OUTLINE';
+                // Must have coordinates
+                if (!/X\d+Y\d+/.test(content)) return 'OTHER';
+                // A connected outline has more draws (D01) than moves (D02).
+                // Disconnected corner markers have equal or more D02s than D01s.
+                const d01Count = (content.match(/D01\b/g) || []).length;
+                const d02Count = (content.match(/D02\b/g) || []).length;
+                if (d01Count > 0 && d02Count >= d01Count) return 'OTHER';
+                return 'OUTLINE';
+            }
             if (/gtl|f_cu|f\\.cu/.test(lower) || lower.endsWith('.cmp') || /top_copper|copper_top/.test(lower)) return 'COPPER_TOP';
             if (/gbl|b_cu|b\\.cu/.test(lower) || lower.endsWith('.sol') || /bottom_copper|copper_bottom/.test(lower)) return 'COPPER_BOTTOM';
             if (/gts|f_mask|f\\.mask/.test(lower) || lower.endsWith('.stc') || /soldermask_top|top_mask/.test(lower)) return 'SOLDERMASK_TOP';
@@ -241,6 +279,14 @@
                 if (lower.includes(key)) return color;
             }
             return '#aaaaaa';
+        }
+
+        function splitFilename(name) {
+            const dotIdx = name.lastIndexOf('.');
+            if (dotIdx <= 0) return `<span class="name-start">${name}</span>`;
+            const start = name.substring(0, dotIdx);
+            const ext = name.substring(dotIdx);
+            return `<span class="name-start">${start}</span><span class="name-ext">${ext}</span>`;
         }
 
         // ===== Browser-side ZIP extraction =====
@@ -444,7 +490,7 @@
                 projectName = file.name;
                 projectFiles = rawFiles.map(f => {
                     const fileType = detectFileType(f.name, f.content);
-                    const layerType = detectPcbLayerType(f.name, fileType);
+                    const layerType = detectPcbLayerType(f.name, fileType, f.content);
                     const color = getLayerColor(f.name);
                     return {name: f.name, content: f.content, fileType, layerType, color};
                 }).filter(f => f.fileType !== 'unknown');
@@ -514,6 +560,8 @@
         }
 
         // ===== Layer list =====
+        let visibilityBeforeHover = null; // saved state during hover-solo
+
         function renderLayerList() {
             if (layers.length === 0) {
                 layerList.innerHTML = '<div class="no-layers">No layers loaded</div>';
@@ -523,23 +571,82 @@
                 const opts = LAYER_TYPES.map(t =>
                     `<option value="${t}" ${layer.layerType === t ? 'selected' : ''}>${LAYER_TYPE_LABELS[t]}</option>`
                 ).join('');
-                return `<div class="layer-item">
+                return `<div class="layer-item" data-index="${index}"
+                        onmouseenter="hoverLayerStart(${index})"
+                        onmouseleave="hoverLayerEnd()">
                     <input type="checkbox" ${layer.visible ? 'checked' : ''}
                         onclick="event.stopPropagation(); toggleLayer(${index})">
                     <div class="color-dot" style="background: ${layer.color}"></div>
-                    <span class="name" title="${layer.name}" onclick="toggleLayer(${index})" style="cursor:pointer">${layer.name}</span>
+                    <span class="name" title="${layer.name}" onclick="toggleLayer(${index})" style="cursor:pointer">${splitFilename(layer.name)}</span>
                     <select class="layer-type-select" onchange="changeLayerType(${index}, this.value)" onclick="event.stopPropagation()">
                         ${opts}
                     </select>
                 </div>`;
             }).join('');
+            updateSelectAllCheckbox();
+        }
+
+        function updateSelectAllCheckbox() {
+            const cb = document.getElementById('select-all-layers');
+            if (!cb || layers.length === 0) return;
+            const visCount = layers.filter(l => l.visible).length;
+            cb.checked = visCount === layers.length;
+            cb.indeterminate = visCount > 0 && visCount < layers.length;
+        }
+
+        function toggleAllLayers() {
+            const cb = document.getElementById('select-all-layers');
+            const newState = cb.checked;
+            layers.forEach(l => l.visible = newState);
+            applyLayerVisibility();
+            renderLayerList();
+        }
+
+        const TOP_TYPES = ['COPPER_TOP','SOLDERMASK_TOP','SILKSCREEN_TOP','PASTE_TOP'];
+        const BOTTOM_TYPES = ['COPPER_BOTTOM','SOLDERMASK_BOTTOM','SILKSCREEN_BOTTOM','PASTE_BOTTOM'];
+        const SHARED_TYPES = ['OUTLINE','DRILL','DRILL_PLATED','DRILL_NON_PLATED'];
+
+        function selectSide(side) {
+            const sideTypes = side === 'top' ? TOP_TYPES : BOTTOM_TYPES;
+            layers.forEach(l => {
+                l.visible = sideTypes.includes(l.layerType) || SHARED_TYPES.includes(l.layerType);
+            });
+            applyLayerVisibility();
+            renderLayerList();
         }
 
         function toggleLayer(index) {
             layers[index].visible = !layers[index].visible;
-            const el = svgContent.querySelector(`#${CSS.escape(layers[index].id)}`);
-            if (el) el.setAttribute('display', layers[index].visible ? 'inline' : 'none');
+            applyLayerVisibility();
             renderLayerList();
+        }
+
+        function applyLayerVisibility() {
+            if (currentView !== 'layers') return;
+            for (const layer of layers) {
+                const el = svgContent.querySelector(`#${CSS.escape(layer.id)}`);
+                if (el) el.setAttribute('display', layer.visible ? 'inline' : 'none');
+            }
+        }
+
+        function hoverLayerStart(index) {
+            if (currentView !== 'layers') return;
+            // Save current visibility state and solo the hovered layer
+            visibilityBeforeHover = layers.map(l => l.visible);
+            for (let i = 0; i < layers.length; i++) {
+                const el = svgContent.querySelector(`#${CSS.escape(layers[i].id)}`);
+                if (el) el.setAttribute('display', i === index ? 'inline' : 'none');
+            }
+        }
+
+        function hoverLayerEnd() {
+            if (currentView !== 'layers' || !visibilityBeforeHover) return;
+            // Restore saved visibility state
+            for (let i = 0; i < layers.length; i++) {
+                const el = svgContent.querySelector(`#${CSS.escape(layers[i].id)}`);
+                if (el) el.setAttribute('display', visibilityBeforeHover[i] ? 'inline' : 'none');
+            }
+            visibilityBeforeHover = null;
         }
 
         let typeChangeTimer = null;
