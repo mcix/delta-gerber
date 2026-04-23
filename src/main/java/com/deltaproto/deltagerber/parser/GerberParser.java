@@ -139,16 +139,30 @@ public class GerberParser {
 
     private void parseFormatSpec(Token token) {
         String content = token.getContent();
-        // Format: FS[LT][AI]X<n><m>Y<n><m>
-        Pattern pattern = Pattern.compile("FS([LT])([AI])X(\\d)(\\d)Y(\\d)(\\d)");
+        // Standard format: FS[LT][AI]X<n><m>Y<n><m>.
+        // Some EDA tools (observed: Altium Designer 25.8.1) omit the L/T zero-suppression
+        // character, emitting "FSAX44Y44". Modern Gerber only uses leading-zero-omitted +
+        // absolute notation, so defaulting to L/A when those flags are absent is safe and
+        // matches what other Gerber viewers do.
+        Pattern pattern = Pattern.compile("FS([LT]?)([AI]?)X(\\d)(\\d)Y(\\d)(\\d)");
         Matcher matcher = pattern.matcher(content);
         if (matcher.find()) {
-            boolean leadingZeroOmitted = matcher.group(1).equals("L");
-            boolean absolute = matcher.group(2).equals("A");
+            String ltFlag = matcher.group(1);
+            String aiFlag = matcher.group(2);
+            boolean leadingZeroOmitted = !ltFlag.equals("T"); // default L (modern spec)
+            boolean absolute = !aiFlag.equals("I");           // default A (modern spec)
             int intDigits = Integer.parseInt(matcher.group(3));
             int decDigits = Integer.parseInt(matcher.group(4));
             coordFormat = new CoordinateFormat(intDigits, decDigits, leadingZeroOmitted, absolute);
             document.setCoordinateFormat(coordFormat);
+            if (ltFlag.isEmpty() || aiFlag.isEmpty()) {
+                document.addWarning("Non-standard FS spec '" + content
+                    + "' — missing " + (ltFlag.isEmpty() ? "zero-suppression" : "")
+                    + (ltFlag.isEmpty() && aiFlag.isEmpty() ? "/" : "")
+                    + (aiFlag.isEmpty() ? "notation" : "") + " flag, assuming L/A");
+            }
+        } else {
+            document.addWarning("Failed to parse FS spec: " + content);
         }
     }
 

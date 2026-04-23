@@ -474,6 +474,88 @@ public class RealisticSvgRenderTest {
         assertEquals(4, lineCount, "Expected 4 straight edges, got " + lineCount);
     }
 
+    @Test
+    @Order(10)
+    @DisplayName("Outline built from short (<tolerance) segments still chains into one loop")
+    void testOutlineWithShortSegments() throws Exception {
+        // Reproduces a real-world bug: a panel/outline built as a long sequence of
+        // short connected straight segments (e.g. mouse-bite teeth, V-score rails,
+        // or polylines approximating a curve) would exit the chain loop on the very
+        // first iteration because the *seed segment's* endpoints were within the
+        // chain tolerance of each other. Each segment would then be emitted as its
+        // own degenerate `M..L..Z` subpath and the clipPath would render as a mess
+        // of disconnected slivers instead of the intended closed outline.
+
+        String outlineGerber = buildShortSegmentOutline();
+        GerberDocument outlineDoc = gerberParser.parse(outlineGerber);
+
+        List<MultiLayerSVGRenderer.Layer> layers = new ArrayList<>();
+        layers.add(new MultiLayerSVGRenderer.Layer("outline", outlineDoc)
+            .setLayerType(LayerType.OUTLINE));
+
+        MultiLayerSVGRenderer renderer = new MultiLayerSVGRenderer();
+        String svg = renderer.renderRealistic(layers);
+
+        Document parsed = parseSvg(svg);
+        Element clipPath = (Element) parsed.getElementsByTagName("clipPath").item(0);
+        Element pathEl = (Element) clipPath.getElementsByTagName("path").item(0);
+        String d = pathEl.getAttribute("d");
+
+        Files.writeString(OUTPUT_DIR.resolve("realistic-short-segments.svg"), svg);
+
+        // Expect exactly one closed subpath with every L segment chained in.
+        int moveCount = countOccurrences(d, "M ");
+        int closeCount = countOccurrences(d, "Z");
+        int lineCount = countOccurrences(d, "L ");
+        assertEquals(1, moveCount,
+            "Short-segment outline must chain into a single subpath, got " + moveCount
+            + ". Path prefix: " + d.substring(0, Math.min(160, d.length())));
+        assertEquals(1, closeCount, "Expected exactly 1 close command");
+        // 40 short segments around the perimeter
+        assertEquals(40, lineCount, "Expected all 40 segments chained in, got " + lineCount);
+    }
+
+    /**
+     * Builds a rectangular outline assembled from 40 short straight segments
+     * (10 per side, each ~0.05 mm long). Every segment on its own is shorter than
+     * the chain tolerance, so the per-seed closure check must not short-circuit
+     * before the chain has a chance to extend.
+     */
+    private String buildShortSegmentOutline() {
+        int segPerSide = 10;
+        int unit = 500;                      // 0.05 mm in 4.4 MM (1 unit = 0.1 µm)
+        int sideLen = segPerSide * unit;     // 0.5 mm per side
+        int x0 = 100000, y0 = 100000;        // 10 mm
+
+        StringBuilder g = new StringBuilder();
+        g.append("G04 synthetic short-segment rectangle outline*\n");
+        g.append("%FSLAX44Y44*%\n");
+        g.append("%MOMM*%\n");
+        g.append("G01*\n");
+        g.append("%ADD10C,0.1000*%\n");
+        g.append("D10*\n");
+
+        int[] cursorHolder = {x0, y0};
+        appendMove(g, cursorHolder, x0, y0);
+        for (int i = 1; i <= segPerSide; i++) appendStep(g, cursorHolder, x0 + i * unit, y0);
+        for (int i = 1; i <= segPerSide; i++) appendStep(g, cursorHolder, x0 + sideLen, y0 + i * unit);
+        for (int i = 1; i <= segPerSide; i++) appendStep(g, cursorHolder, x0 + sideLen - i * unit, y0 + sideLen);
+        for (int i = 1; i <= segPerSide; i++) appendStep(g, cursorHolder, x0, y0 + sideLen - i * unit);
+
+        g.append("M02*\n");
+        return g.toString();
+    }
+
+    private static void appendMove(StringBuilder g, int[] cursor, int x, int y) {
+        g.append("X").append(x).append("Y").append(y).append("D02*\n");
+        cursor[0] = x; cursor[1] = y;
+    }
+
+    private static void appendStep(StringBuilder g, int[] cursor, int x, int y) {
+        g.append("X").append(x).append("Y").append(y).append("D01*\n");
+        cursor[0] = x; cursor[1] = y;
+    }
+
     /**
      * Rectangle with four CCW-quarter-arc corners, where straight edges don't quite
      * meet the adjacent arc's tangent point — a 40 µm gap at each corner joint.

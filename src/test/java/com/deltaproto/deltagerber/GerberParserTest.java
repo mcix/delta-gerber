@@ -295,4 +295,64 @@ public class GerberParserTest {
         assertNotNull(svg);
         assertTrue(svg.contains("<svg"));
     }
+
+    @Test
+    void testFormatSpecMissingZeroSuppressionFlag() {
+        // Reproduces a real-world bug: some EDA tools (observed: Altium Designer 25.8.1)
+        // emit the FS block WITHOUT the L/T zero-suppression character — e.g. "FSAX44Y44"
+        // instead of the spec-compliant "FSLAX44Y44". Strict FS parsing silently dropped
+        // the format spec, leaving coordFormat null, which then made every coordinate
+        // throw NPE — the server catches per-file, so every Gerber layer ended up empty
+        // and only the drill (different parser) appeared in the rendered SVG.
+        //
+        // Modern Gerber only uses L (leading zeros omitted) and A (absolute), so the
+        // parser defaults to those when the flags are absent and records a warning.
+        String gerber = """
+            G04 Non-standard FS with no L/T flag*
+            %FSAX44Y44*%
+            %MOMM*%
+            %ADD10C,0.1000*%
+            D10*
+            X00312000Y00346250D02*
+            X00354250Y00304000D01*
+            M02*
+            """;
+
+        GerberDocument doc = parser.parse(gerber);
+
+        // Coordinate 00312000 in 4.4 format, leading-zeros-omitted = 31.2000 mm
+        assertEquals(1, doc.getObjects().size(),
+            "Missing L/T in FS spec must not drop all coordinates");
+        assertInstanceOf(Draw.class, doc.getObjects().get(0));
+        Draw draw = (Draw) doc.getObjects().get(0);
+        assertEquals(31.2,   draw.getStartX(), 0.001);
+        assertEquals(34.625, draw.getStartY(), 0.001);
+        assertEquals(35.425, draw.getEndX(),   0.001);
+        assertEquals(30.4,   draw.getEndY(),   0.001);
+
+        // A warning should be surfaced so callers can flag the non-standard file
+        assertTrue(doc.getWarnings().stream().anyMatch(w -> w.contains("FS spec")),
+            "Expected a warning about non-standard FS spec, got: " + doc.getWarnings());
+    }
+
+    @Test
+    void testFormatSpecMissingBothFlags() {
+        // Belt-and-braces: a hypothetical FS with neither L/T nor A/I still parses,
+        // defaulting to L (leading-zero-omitted) + A (absolute) per modern Gerber.
+        String gerber = """
+            %FSX23Y23*%
+            %MOMM*%
+            %ADD10C,0.1*%
+            D10*
+            X1000Y2000D03*
+            M02*
+            """;
+
+        GerberDocument doc = parser.parse(gerber);
+        assertEquals(1, doc.getObjects().size());
+        // 2:3 leading-zero-omitted: 1000 = 01.000 mm, 2000 = 02.000 mm
+        Flash flash = (Flash) doc.getObjects().get(0);
+        assertEquals(1.0, flash.getX(), 0.001);
+        assertEquals(2.0, flash.getY(), 0.001);
+    }
 }

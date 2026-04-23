@@ -712,7 +712,19 @@ public class MultiLayerSVGRenderer {
             double headX = seed.endX;
             double headY = seed.endY;
 
-            while (distSq(headX, headY, loopStartX, loopStartY) > toleranceSq) {
+            // Chain greedily: at each step pick the best unused segment whose endpoint
+            // meets the head within tolerance. Close only once no such continuation
+            // exists that is at least as close as the loop start — this prevents two
+            // failure modes:
+            //   1. A short seed (< tolerance length) short-circuits loop closure on
+            //      iteration 0 — e.g. mouse-bite teeth, V-score rails, arc-approx
+            //      polylines. Must leave the tolerance ball before closure counts.
+            //   2. A chain built from short segments hits a point one segment before
+            //      the true close that happens to lie ≤ tolerance from the start —
+            //      we must prefer extending if an unused segment continues the chain
+            //      at least as well as snapping back to the start would.
+            boolean leftToleranceBall = false;
+            while (true) {
                 Segment next = null;
                 boolean reverse = false;
                 double bestSq = toleranceSq;
@@ -727,11 +739,20 @@ public class MultiLayerSVGRenderer {
                         bestSq = d2; next = s; reverse = true;
                     }
                 }
+                double headDistSq = distSq(headX, headY, loopStartX, loopStartY);
+                if (leftToleranceBall && headDistSq <= toleranceSq
+                        && (next == null || bestSq >= headDistSq)) {
+                    break; // loop closed — no better continuation than snapping back
+                }
                 if (next == null) break; // open loop — emit Z anyway to let SVG fill it
                 next.used = true;
                 appendSegment(path, next, reverse, options);
                 headX = reverse ? next.startX : next.endX;
                 headY = reverse ? next.startY : next.endY;
+                if (!leftToleranceBall
+                    && distSq(headX, headY, loopStartX, loopStartY) > toleranceSq) {
+                    leftToleranceBall = true;
+                }
             }
             path.append(" Z");
         }
