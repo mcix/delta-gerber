@@ -381,6 +381,136 @@ public class RealisticSvgRenderTest {
             OUTPUT_DIR.resolve("arduino-uno-realistic-bottom.svg"));
     }
 
+    @Test
+    @Order(8)
+    @DisplayName("Outline with mixed-direction draws (Altium-style) chains into closed loops")
+    void testOutlineMixedDirectionDraws() throws Exception {
+        // Reproduces a real-world bug: some EDA tools (notably Altium) emit the board
+        // outline as a series of D02/D01 pairs where individual segments are written
+        // in mixed directions — some forward (start→end of the traced path), some
+        // reversed. The segments still geometrically trace a closed loop, but end-to-start
+        // linear chaining breaks, causing the realistic view's clipPath to fragment
+        // into many single-segment subpaths and render as a distorted mess.
+        //
+        // This synthetic outline describes a rectangle with an inner circular cutout,
+        // with roughly half the segments written in reverse order.
+
+        String outlineGerber = buildMixedDirectionOutline();
+        GerberDocument outlineDoc = gerberParser.parse(outlineGerber);
+        assertTrue(outlineDoc.getObjects().size() > 8,
+            "Outline should have many segments");
+
+        List<MultiLayerSVGRenderer.Layer> layers = new ArrayList<>();
+        layers.add(new MultiLayerSVGRenderer.Layer("outline", outlineDoc)
+            .setLayerType(LayerType.OUTLINE));
+
+        MultiLayerSVGRenderer renderer = new MultiLayerSVGRenderer();
+        String svg = renderer.renderRealistic(layers);
+
+        Document parsed = parseSvg(svg);
+        Element clipPath = (Element) parsed.getElementsByTagName("clipPath").item(0);
+        Element pathEl = (Element) clipPath.getElementsByTagName("path").item(0);
+        String d = pathEl.getAttribute("d");
+
+        Files.writeString(OUTPUT_DIR.resolve("realistic-mixed-direction.svg"), svg);
+
+        // The outline is a rectangle + inner circle cutout → exactly 2 closed subpaths
+        int moveCount = countOccurrences(d, "M ");
+        int closeCount = countOccurrences(d, "Z");
+        assertEquals(2, moveCount,
+            "Expected exactly 2 subpaths (outer rect + inner circle), got " + moveCount
+            + ". Path: " + d);
+        assertEquals(2, closeCount,
+            "Expected exactly 2 close commands, got " + closeCount);
+
+        // Each subpath must have more than one segment (no orphaned M..L..Z pairs)
+        String[] subpaths = d.split("(?=M )");
+        for (String sp : subpaths) {
+            if (sp.isBlank()) continue;
+            int lines = countOccurrences(sp, "L ");
+            assertTrue(lines > 1,
+                "Subpath should contain multiple L segments, got " + lines + ": " + sp);
+        }
+    }
+
+    /**
+     * Builds a Gerber outline describing a rectangle plus an inner circular cutout,
+     * where many segments are written in reversed direction (start/end swapped)
+     * — the pattern that Altium Designer emits for GKO outlines.
+     */
+    private String buildMixedDirectionOutline() {
+        // Outer rectangle corners (integer micrometers in 4.4 MM format: 1 unit = 0.1 µm;
+        // we'll use whole mm coords encoded as N0000 units)
+        // FSLAX44Y44 with MOMM → e.g. 100000 = 10.000 mm
+        int[][] rect = {
+            {100000, 100000},  // A
+            {900000, 100000},  // B
+            {900000, 600000},  // C
+            {100000, 600000},  // D
+        };
+
+        // Inner circle (approximated by 12-segment polygon, centered at 50,35 with r=10)
+        double cx = 500000, cy = 350000, r = 100000;
+        int segments = 12;
+        int[][] circle = new int[segments][2];
+        for (int i = 0; i < segments; i++) {
+            double ang = 2 * Math.PI * i / segments;
+            circle[i][0] = (int) Math.round(cx + r * Math.cos(ang));
+            circle[i][1] = (int) Math.round(cy + r * Math.sin(ang));
+        }
+
+        StringBuilder g = new StringBuilder();
+        g.append("G04 synthetic mixed-direction outline*\n");
+        g.append("%FSLAX44Y44*%\n");
+        g.append("%MOMM*%\n");
+        g.append("G01*\n");
+        g.append("%ADD10C,0.1000*%\n");
+        g.append("D10*\n");
+
+        // Outer rectangle: alternating forward/reverse segment direction, so
+        // simple end-to-start chaining fails and requires endpoint-graph walking.
+        // A→B forward, B→C forward, D→C reversed (written as D02 C → D01 D? no:
+        // "reversed" here means D02 at the segment's *end*, then D01 back to its *start*)
+        appendForward(g, rect[0], rect[1]);   // A→B
+        appendForward(g, rect[1], rect[2]);   // B→C
+        appendReversed(g, rect[3], rect[2]);  // C→D written as D02 D → D01 C
+        appendReversed(g, rect[0], rect[3]);  // D→A written as D02 A → D01 D
+
+        // Inner circle: half forward, half reversed
+        for (int i = 0; i < segments; i++) {
+            int[] a = circle[i];
+            int[] b = circle[(i + 1) % segments];
+            if (i % 2 == 0) {
+                appendForward(g, a, b);
+            } else {
+                appendReversed(g, a, b);
+            }
+        }
+
+        g.append("M02*\n");
+        return g.toString();
+    }
+
+    private static void appendForward(StringBuilder g, int[] from, int[] to) {
+        g.append("X").append(from[0]).append("Y").append(from[1]).append("D02*\n");
+        g.append("X").append(to[0]).append("Y").append(to[1]).append("D01*\n");
+    }
+
+    /** Emit a segment whose geometry is from→to, but written as D02 to → D01 from (reversed). */
+    private static void appendReversed(StringBuilder g, int[] from, int[] to) {
+        g.append("X").append(to[0]).append("Y").append(to[1]).append("D02*\n");
+        g.append("X").append(from[0]).append("Y").append(from[1]).append("D01*\n");
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0, idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) != -1) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
+    }
+
     // --- Helpers ---
 
     private Map<String, GerberDocument> loadGerberFiles(String... filenames) throws Exception {

@@ -645,7 +645,13 @@ public class MultiLayerSVGRenderer {
      * Extract a filled SVG path from a board outline Gerber document.
      * <p>
      * Prefers Region objects (already filled paths). Falls back to chaining
-     * Draw/Arc endpoints into a closed path.
+     * Draw/Arc endpoints into one or more closed subpaths.
+     * <p>
+     * Some EDA tools (notably Altium) emit board outlines as D02/D01 pairs with
+     * segments written in mixed directions — end-to-start linear chaining breaks
+     * on the reversed ones and fragments the path into single-segment subpaths.
+     * We chain bidirectionally: each new segment can match the running head on
+     * either endpoint, reversing the segment's direction when its end matches.
      */
     private String extractOutlinePath(GerberDocument outlineDoc, SvgOptions options) {
         List<GraphicsObject> objects = outlineDoc.getObjects();
@@ -665,84 +671,120 @@ public class MultiLayerSVGRenderer {
             return regionPaths.toString();
         }
 
-        // Fall back: chain Draw/Arc endpoints into a filled path
-        // Board outlines are typically a single closed loop of draws/arcs
-        StringBuilder path = new StringBuilder();
-        double lastEndX = Double.NaN;
-        double lastEndY = Double.NaN;
-        double tolerance = 0.001;
-
+        List<Segment> segments = new ArrayList<>();
         for (GraphicsObject obj : objects) {
-            double startX, startY, endX, endY;
-            boolean isArc = false;
-            Arc arc = null;
-
             if (obj instanceof Draw) {
-                Draw draw = (Draw) obj;
-                startX = draw.getStartX();
-                startY = draw.getStartY();
-                endX = draw.getEndX();
-                endY = draw.getEndY();
+                Draw d = (Draw) obj;
+                segments.add(Segment.draw(d.getStartX(), d.getStartY(),
+                    d.getEndX(), d.getEndY()));
             } else if (obj instanceof Arc) {
-                arc = (Arc) obj;
-                startX = arc.getStartX();
-                startY = arc.getStartY();
-                endX = arc.getEndX();
-                endY = arc.getEndY();
-                isArc = true;
-            } else {
-                continue; // Skip flashes and other objects
+                Arc a = (Arc) obj;
+                segments.add(Segment.arc(a.getStartX(), a.getStartY(),
+                    a.getEndX(), a.getEndY(), a.getCenterX(), a.getCenterY(),
+                    a.getRadius(), a.isClockwise()));
             }
-
-            // Check if this segment connects to the previous one
-            boolean connected = !Double.isNaN(lastEndX)
-                && Math.abs(startX - lastEndX) < tolerance
-                && Math.abs(startY - lastEndY) < tolerance;
-
-            if (!connected) {
-                // Close previous loop if any
-                if (!Double.isNaN(lastEndX)) {
-                    path.append(" Z");
-                }
-                path.append(String.format(Locale.US, " M %.6f %.6f", startX, startY));
-            }
-
-            if (isArc) {
-                double radius = arc.getRadius();
-                double sa = Math.atan2(arc.getStartY() - arc.getCenterY(),
-                    arc.getStartX() - arc.getCenterX());
-                double ea = Math.atan2(arc.getEndY() - arc.getCenterY(),
-                    arc.getEndX() - arc.getCenterX());
-                double sweep;
-                if (arc.isClockwise()) {
-                    sweep = sa - ea;
-                    if (sweep <= 0) sweep += 2 * Math.PI;
-                } else {
-                    sweep = ea - sa;
-                    if (sweep <= 0) sweep += 2 * Math.PI;
-                }
-                int largeArcFlag = sweep > Math.PI ? 1 : 0;
-                int sweepFlag;
-                if (options.isFlipY()) {
-                    sweepFlag = arc.isClockwise() ? 0 : 1;
-                } else {
-                    sweepFlag = arc.isClockwise() ? 1 : 0;
-                }
-                path.append(String.format(Locale.US, " A %.6f %.6f 0 %d %d %.6f %.6f",
-                    radius, radius, largeArcFlag, sweepFlag, endX, endY));
-            } else {
-                path.append(String.format(Locale.US, " L %.6f %.6f", endX, endY));
-            }
-
-            lastEndX = endX;
-            lastEndY = endY;
         }
+        if (segments.isEmpty()) return "";
 
-        if (!Double.isNaN(lastEndX)) {
+        double tolerance = 0.001;
+        StringBuilder path = new StringBuilder();
+
+        for (Segment seed : segments) {
+            if (seed.used) continue;
+            seed.used = true;
+
+            double loopStartX = seed.startX;
+            double loopStartY = seed.startY;
+            path.append(String.format(Locale.US, " M %.6f %.6f", loopStartX, loopStartY));
+            appendSegment(path, seed, false, options);
+            double headX = seed.endX;
+            double headY = seed.endY;
+
+            while (Math.abs(headX - loopStartX) > tolerance
+                    || Math.abs(headY - loopStartY) > tolerance) {
+                Segment next = null;
+                boolean reverse = false;
+                for (Segment s : segments) {
+                    if (s.used) continue;
+                    if (Math.abs(s.startX - headX) < tolerance
+                            && Math.abs(s.startY - headY) < tolerance) {
+                        next = s; reverse = false; break;
+                    }
+                    if (Math.abs(s.endX - headX) < tolerance
+                            && Math.abs(s.endY - headY) < tolerance) {
+                        next = s; reverse = true; break;
+                    }
+                }
+                if (next == null) break; // open loop — emit Z anyway to let SVG fill it
+                next.used = true;
+                appendSegment(path, next, reverse, options);
+                headX = reverse ? next.startX : next.endX;
+                headY = reverse ? next.startY : next.endY;
+            }
             path.append(" Z");
         }
 
         return path.toString().trim();
+    }
+
+    private void appendSegment(StringBuilder path, Segment s, boolean reverse,
+                               SvgOptions options) {
+        double ex = reverse ? s.startX : s.endX;
+        double ey = reverse ? s.startY : s.endY;
+        if (!s.isArc) {
+            path.append(String.format(Locale.US, " L %.6f %.6f", ex, ey));
+            return;
+        }
+
+        double sx = reverse ? s.endX : s.startX;
+        double sy = reverse ? s.endY : s.startY;
+        boolean cw = reverse ? !s.clockwise : s.clockwise;
+        double sa = Math.atan2(sy - s.centerY, sx - s.centerX);
+        double ea = Math.atan2(ey - s.centerY, ex - s.centerX);
+        double sweep;
+        if (cw) {
+            sweep = sa - ea;
+            if (sweep <= 0) sweep += 2 * Math.PI;
+        } else {
+            sweep = ea - sa;
+            if (sweep <= 0) sweep += 2 * Math.PI;
+        }
+        int largeArcFlag = sweep > Math.PI ? 1 : 0;
+        int sweepFlag;
+        if (options.isFlipY()) {
+            sweepFlag = cw ? 0 : 1;
+        } else {
+            sweepFlag = cw ? 1 : 0;
+        }
+        path.append(String.format(Locale.US, " A %.6f %.6f 0 %d %d %.6f %.6f",
+            s.radius, s.radius, largeArcFlag, sweepFlag, ex, ey));
+    }
+
+    private static final class Segment {
+        final boolean isArc;
+        final double startX, startY, endX, endY;
+        final double centerX, centerY, radius;
+        final boolean clockwise;
+        boolean used;
+
+        private Segment(boolean isArc, double sx, double sy, double ex, double ey,
+                        double cx, double cy, double r, boolean cw) {
+            this.isArc = isArc;
+            this.startX = sx; this.startY = sy;
+            this.endX = ex;   this.endY = ey;
+            this.centerX = cx; this.centerY = cy;
+            this.radius = r;
+            this.clockwise = cw;
+        }
+
+        static Segment draw(double sx, double sy, double ex, double ey) {
+            return new Segment(false, sx, sy, ex, ey, 0, 0, 0, false);
+        }
+
+        static Segment arc(double sx, double sy, double ex, double ey,
+                           double cx, double cy, double r, boolean cw) {
+            return new Segment(true, sx, sy, ex, ey, cx, cy, r, cw);
+        }
     }
 
     private void renderDrillContent(StringBuilder svg, DrillDocument doc) {
