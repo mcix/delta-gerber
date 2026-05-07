@@ -251,6 +251,44 @@
         }
         .recent-item:hover { background: var(--item-hover); }
         .recent-item .date { color: var(--fg-faint); font-size: 0.6875rem; margin-left: auto; }
+
+        /* ===== Centroid Panel ===== */
+        #centroid-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+        .centroid-toolbar {
+            background: var(--bg-card); border-bottom: 1px solid var(--border);
+            padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+        }
+        .centroid-search {
+            flex: 1; max-width: 280px; background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 6px; padding: 6px 10px; font-size: 0.8125rem; color: var(--fg); font-family: inherit;
+        }
+        .centroid-search:focus { outline: 2px solid var(--ring); outline-offset: -1px; }
+        .centroid-toolbar-count { font-size: 0.8125rem; color: var(--fg-muted); }
+        .centroid-toolbar-export {
+            background: var(--bg-input); color: var(--fg); border: 1px solid var(--border);
+            padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8125rem;
+            font-family: inherit; font-weight: 500; transition: background 0.15s;
+        }
+        .centroid-toolbar-export:hover { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+        .centroid-table-wrap { flex: 1; overflow: auto; }
+        .centroid-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+        .centroid-table thead th {
+            position: sticky; top: 0; background: var(--bg-card); border-bottom: 1px solid var(--border);
+            padding: 8px 12px; text-align: left; font-weight: 600; color: var(--fg-muted);
+            white-space: nowrap; cursor: pointer; user-select: none;
+        }
+        .centroid-table thead th:hover { color: var(--fg); background: var(--item-hover); }
+        .centroid-table thead th.sorted-asc::after  { content: ' ▲'; font-size: 0.625rem; }
+        .centroid-table thead th.sorted-desc::after { content: ' ▼'; font-size: 0.625rem; }
+        .centroid-table tbody tr { border-bottom: 1px solid var(--border-subtle); }
+        .centroid-table tbody tr:hover { background: var(--item-hover); }
+        .centroid-table tbody td { padding: 7px 12px; }
+        .centroid-refdes-pill {
+            display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;
+        }
+        .centroid-refdes-pill.side-top    { background: rgba(106,174,214,0.18); color: #6aaed6; }
+        .centroid-refdes-pill.side-bottom { background: rgba(232,150,84,0.18);  color: #e89654; }
+        .centroid-num { color: var(--fg-faint); font-size: 0.75rem; }
     </style>
 </head>
 <body class="dark">
@@ -317,6 +355,7 @@
                 <button class="view-tab active" data-view="layers" onclick="switchView('layers')">All Layers</button>
                 <button class="view-tab" data-view="top" onclick="switchView('top')">Board Top</button>
                 <button class="view-tab" data-view="bottom" onclick="switchView('bottom')">Board Bottom</button>
+                <button class="view-tab" id="centroid-tab" data-view="centroid" onclick="switchView('centroid')" disabled style="opacity:0.4">Centroid</button>
                 <span style="flex:1"></span>
                 <button class="view-tab" id="png-top-btn" onclick="downloadThumbnail('top')"
                     title="Download PNG thumbnail of the realistic top view">
@@ -359,6 +398,33 @@
                     <div id="svg-content"></div>
                 </div>
             </div>
+            <div id="centroid-panel" class="hidden">
+                <div class="centroid-toolbar">
+                    <input class="centroid-search" id="centroid-search" type="search"
+                        placeholder="Search designator, value…" oninput="filterCentroidTable()">
+                    <span class="centroid-toolbar-count" id="centroid-toolbar-count"></span>
+                    <span style="flex:1"></span>
+                    <button class="centroid-toolbar-export" onclick="exportCentroidCsv()">Export CSV</button>
+                </div>
+                <div class="centroid-table-wrap">
+                    <table class="centroid-table">
+                        <thead>
+                            <tr>
+                                <th data-col="num" onclick="sortCentroidTable('num')">#</th>
+                                <th data-col="refdes" onclick="sortCentroidTable('refdes')">Designator</th>
+                                <th data-col="side" onclick="sortCentroidTable('side')">Side</th>
+                                <th data-col="value" onclick="sortCentroidTable('value')">Value</th>
+                                <th data-col="footprint" onclick="sortCentroidTable('footprint')">Footprint</th>
+                                <th data-col="x" onclick="sortCentroidTable('x')">X (mm)</th>
+                                <th data-col="y" onclick="sortCentroidTable('y')">Y (mm)</th>
+                                <th data-col="rotation" onclick="sortCentroidTable('rotation')">Rotation</th>
+                                <th data-col="mountType" onclick="sortCentroidTable('mountType')">Mount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="centroid-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -372,6 +438,7 @@
         let realisticBottomSvg = null;
         let currentView = 'layers';
         let scale = 1, panX = 0, panY = 0, isPanning = false, startX, startY;
+        let components = [];  // [{refdes, value, footprint, mountType, x, y, rotation, side}]
 
         // DOM refs
         const fileInput = document.getElementById('file-input');
@@ -420,8 +487,14 @@
                         if (parts.some(p => p === 'Plated')) return 'DRILL_PLATED';
                         return 'DRILL';
                     }
+                    if (parts[0] === 'Component') {
+                        if (parts.some(p => p === 'Top')) return 'PNP_TOP';
+                        if (parts.some(p => p === 'Bot' || p === 'Bottom')) return 'PNP_BOTTOM';
+                    }
                 }
             }
+            if (/pnp[_.-]?top|top[_.-]?pnp/.test(lower)) return 'PNP_TOP';
+            if (/pnp[_.-]?bot|bot[_.-]?pnp|pnp[_.-]?bottom|bottom[_.-]?pnp/.test(lower)) return 'PNP_BOTTOM';
             if (/-npth(?:[-_.]|$)|nonplated.*drl|npth.*drl/.test(lower)) return 'DRILL_NON_PLATED';
             if (/-pth(?:[-_.]|$)|[-_.]drl\.|drill\.gbr$/.test(lower)) return 'DRILL_PLATED';
 
@@ -456,7 +529,8 @@
             gto:'#ffffff', gbo:'#cccccc', f_silks:'#ffffff', b_silks:'#cccccc', plc:'#ffffff', pls:'#cccccc',
             gtp:'#888888', gbp:'#666666',
             gko:'#ffff00', gm1:'#ffff00', edge:'#ffff00',
-            drl:'#00ffff', xln:'#00ffff', drd:'#00ffff'
+            drl:'#00ffff', xln:'#00ffff', drd:'#00ffff',
+            pnp:'#cc44cc'
         };
 
         function getLayerColor(name) {
@@ -693,13 +767,15 @@
 
         // ===== Layer type constants =====
         const LAYER_TYPES = ['OUTLINE','COPPER_TOP','COPPER_BOTTOM','SOLDERMASK_TOP','SOLDERMASK_BOTTOM',
-            'SILKSCREEN_TOP','SILKSCREEN_BOTTOM','PASTE_TOP','PASTE_BOTTOM','DRILL','DRILL_PLATED','DRILL_NON_PLATED','OTHER'];
+            'SILKSCREEN_TOP','SILKSCREEN_BOTTOM','PASTE_TOP','PASTE_BOTTOM','DRILL','DRILL_PLATED','DRILL_NON_PLATED',
+            'PNP_TOP','PNP_BOTTOM','OTHER'];
         const LAYER_TYPE_LABELS = {
             'OUTLINE':'Outline','COPPER_TOP':'Cu Top','COPPER_BOTTOM':'Cu Bot',
             'SOLDERMASK_TOP':'Mask Top','SOLDERMASK_BOTTOM':'Mask Bot',
             'SILKSCREEN_TOP':'Silk Top','SILKSCREEN_BOTTOM':'Silk Bot',
             'PASTE_TOP':'Paste Top','PASTE_BOTTOM':'Paste Bot',
-            'DRILL':'Drill','DRILL_PLATED':'Drill PTH','DRILL_NON_PLATED':'Drill NPTH','OTHER':'Other'
+            'DRILL':'Drill','DRILL_PLATED':'Drill PTH','DRILL_NON_PLATED':'Drill NPTH',
+            'PNP_TOP':'PnP Top','PNP_BOTTOM':'PnP Bot','OTHER':'Other'
         };
 
         // ===== File input & drag-drop =====
@@ -783,6 +859,8 @@
             combinedSvg = data.svg;
             realisticTopSvg = data.realisticTopSvg;
             realisticBottomSvg = data.realisticBottomSvg;
+            components = data.components || [];
+            renderCentroidTable();
 
             // Sync layer types back to projectFiles (in case server assigned IDs differently)
             for (let i = 0; i < layers.length && i < files.length; i++) {
@@ -873,8 +951,8 @@
             renderLayerList();
         }
 
-        const TOP_TYPES = ['COPPER_TOP','SOLDERMASK_TOP','SILKSCREEN_TOP','PASTE_TOP'];
-        const BOTTOM_TYPES = ['COPPER_BOTTOM','SOLDERMASK_BOTTOM','SILKSCREEN_BOTTOM','PASTE_BOTTOM'];
+        const TOP_TYPES = ['COPPER_TOP','SOLDERMASK_TOP','SILKSCREEN_TOP','PASTE_TOP','PNP_TOP'];
+        const BOTTOM_TYPES = ['COPPER_BOTTOM','SOLDERMASK_BOTTOM','SILKSCREEN_BOTTOM','PASTE_BOTTOM','PNP_BOTTOM'];
         const SHARED_TYPES = ['OUTLINE','DRILL','DRILL_PLATED','DRILL_NON_PLATED'];
 
         function selectSide(side) {
@@ -987,10 +1065,21 @@
         function switchView(view) {
             if (view === 'top' && !realisticTopSvg) return;
             if (view === 'bottom' && !realisticBottomSvg) return;
+            if (view === 'centroid' && (!components || components.length === 0)) return;
             currentView = view;
             document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
-            renderSvg();
-            fitToView();
+            const vc = document.getElementById('viewer-container');
+            const cp = document.getElementById('centroid-panel');
+            if (view === 'centroid') {
+                vc.classList.add('hidden');
+                cp.classList.remove('hidden');
+                refreshCentroidTable();
+            } else {
+                cp.classList.add('hidden');
+                vc.classList.remove('hidden');
+                renderSvg();
+                fitToView();
+            }
         }
 
         // ===== Pan & Zoom =====
@@ -1049,6 +1138,106 @@
         function updateTransform() {
             svgContent.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
             zoomLevel.textContent = Math.round(scale * 100) + '%';
+        }
+
+        // ===== Centroid table =====
+        let centroidSortCol = 'refdes';
+        let centroidSortAsc = true;
+
+        function renderCentroidTable() {
+            const tab = document.getElementById('centroid-tab');
+            if (!tab) return;
+            if (!components || components.length === 0) {
+                tab.disabled = true;
+                tab.style.opacity = '0.4';
+                tab.textContent = 'Centroid';
+                return;
+            }
+            tab.disabled = false;
+            tab.style.opacity = '1';
+            tab.textContent = `Centroid (${components.length})`;
+        }
+
+        function refreshCentroidTable() {
+            const search = (document.getElementById('centroid-search')?.value || '').toLowerCase();
+            let filtered = components.filter(c =>
+                !search ||
+                c.refdes.toLowerCase().includes(search) ||
+                (c.value || '').toLowerCase().includes(search) ||
+                (c.footprint || '').toLowerCase().includes(search)
+            );
+
+            filtered.sort((a, b) => {
+                const dir = centroidSortAsc ? 1 : -1;
+                const va = a[centroidSortCol] ?? '', vb = b[centroidSortCol] ?? '';
+                if (centroidSortCol === 'refdes') {
+                    return dir * va.localeCompare(vb, undefined, {numeric: true});
+                }
+                if (typeof va === 'number') return dir * (va - vb);
+                return dir * String(va).localeCompare(String(vb));
+            });
+
+            const countEl = document.getElementById('centroid-toolbar-count');
+            if (countEl) countEl.textContent = filtered.length === components.length
+                ? `${components.length} component${components.length !== 1 ? 's' : ''}`
+                : `${filtered.length} of ${components.length} components`;
+
+            document.querySelectorAll('.centroid-table thead th[data-col]').forEach(th => {
+                th.classList.remove('sorted-asc', 'sorted-desc');
+                if (th.dataset.col === centroidSortCol) {
+                    th.classList.add(centroidSortAsc ? 'sorted-asc' : 'sorted-desc');
+                }
+            });
+
+            const tbody = document.getElementById('centroid-tbody');
+            tbody.innerHTML = filtered.map((c, i) => {
+                const sideClass = (c.side || '').toLowerCase() === 'top' ? 'side-top' : 'side-bottom';
+                return `<tr>
+                    <td class="centroid-num">${i + 1}</td>
+                    <td><span class="centroid-refdes-pill ${sideClass}">${escapeHtml(c.refdes)}</span></td>
+                    <td>${escapeHtml(c.side || '')}</td>
+                    <td>${escapeHtml(c.value || '—')}</td>
+                    <td>${escapeHtml(c.footprint || '—')}</td>
+                    <td>${c.x.toFixed(4)}</td>
+                    <td>${c.y.toFixed(4)}</td>
+                    <td>${c.rotation}°</td>
+                    <td>${escapeHtml(c.mountType || '')}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function filterCentroidTable() { refreshCentroidTable(); }
+
+        function sortCentroidTable(col) {
+            centroidSortAsc = centroidSortCol === col ? !centroidSortAsc : true;
+            centroidSortCol = col;
+            refreshCentroidTable();
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function exportCentroidCsv() {
+            if (!components || components.length === 0) return;
+            const sorted = [...components].sort((a, b) =>
+                a.refdes.localeCompare(b.refdes, undefined, {numeric: true}));
+            const lines = ['Designator,Value,Footprint,MountType,X_mm,Y_mm,Rotation_deg,Side'];
+            for (const c of sorted) {
+                lines.push([c.refdes, c.value, c.footprint, c.mountType,
+                    c.x.toFixed(4), c.y.toFixed(4), c.rotation, c.side
+                ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+            }
+            const blob = new Blob([lines.join('\r\n')], {type: 'text/csv'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const base = (projectName || 'board').replace(/[^a-zA-Z0-9._-]/g, '_');
+            a.download = `${base}-centroid.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
         }
 
         // ===== Sidebar resize =====

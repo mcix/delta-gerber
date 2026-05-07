@@ -707,19 +707,48 @@ public class MultiLayerSVGRenderer {
         }
         if (segments.isEmpty()) return "";
 
-        double toleranceSq = OUTLINE_CHAIN_TOLERANCE_MM * OUTLINE_CHAIN_TOLERANCE_MM;
-        StringBuilder path = new StringBuilder();
+        // Overall bounding box of all segments — used below to identify the outer
+        // panel frame rectangle. Panels (e.g. flex-PCB production panels) include an
+        // outer rectangular frame in the outline layer in addition to the actual PCB
+        // outline. When both form closed loops in the clip path, the nonzero fill rule
+        // cancels their opposing windings in the PCB interior, making the board
+        // invisible. We detect the frame by its bounding box matching the overall
+        // bounds and exclude it from the final path.
+        double allMinX = Double.MAX_VALUE, allMinY = Double.MAX_VALUE;
+        double allMaxX = -Double.MAX_VALUE, allMaxY = -Double.MAX_VALUE;
+        for (Segment s : segments) {
+            allMinX = Math.min(allMinX, Math.min(s.startX, s.endX));
+            allMinY = Math.min(allMinY, Math.min(s.startY, s.endY));
+            allMaxX = Math.max(allMaxX, Math.max(s.startX, s.endX));
+            allMaxY = Math.max(allMaxY, Math.max(s.startY, s.endY));
+        }
 
-        for (Segment seed : segments) {
+        double toleranceSq = OUTLINE_CHAIN_TOLERANCE_MM * OUTLINE_CHAIN_TOLERANCE_MM;
+
+        // Collect subpaths separately so we can filter out the outer panel frame.
+        List<String> subpathList = new ArrayList<>();
+        List<double[]> subpathBoundsList = new ArrayList<>();  // [minX, minY, maxX, maxY]
+        List<Boolean> subpathHasArcList = new ArrayList<>();
+
+        // Index-based so we can safely append near-half splits to segments mid-iteration.
+        for (int si = 0; si < segments.size(); si++) {
+            Segment seed = segments.get(si);
             if (seed.used) continue;
             seed.used = true;
 
+            StringBuilder subpath = new StringBuilder();
             double loopStartX = seed.startX;
             double loopStartY = seed.startY;
-            path.append(String.format(Locale.US, " M %.6f %.6f", loopStartX, loopStartY));
-            appendSegment(path, seed, false, options);
+            subpath.append(String.format(Locale.US, "M %.6f %.6f", loopStartX, loopStartY));
+            appendSegment(subpath, seed, false, options);
             double headX = seed.endX;
             double headY = seed.endY;
+
+            double spMinX = Math.min(seed.startX, seed.endX);
+            double spMinY = Math.min(seed.startY, seed.endY);
+            double spMaxX = Math.max(seed.startX, seed.endX);
+            double spMaxY = Math.max(seed.startY, seed.endY);
+            boolean spHasArc = seed.isArc;
 
             // Chain greedily: at each step pick the best unused segment whose endpoint
             // meets the head within tolerance. Close only once no such continuation
@@ -753,17 +782,80 @@ public class MultiLayerSVGRenderer {
                         && (next == null || bestSq >= headDistSq)) {
                     break; // loop closed — no better continuation than snapping back
                 }
-                if (next == null) break; // open loop — emit Z anyway to let SVG fill it
+                if (next == null) {
+                    // T-intersection fallback: the head may lie on the interior of a
+                    // collinear segment (not at its endpoints). This occurs in flex-PCB
+                    // or panel outlines where adjacent rigid/flex boundary segments
+                    // overlap — e.g. a top-tab left edge (y=79–91) and a flex-body
+                    // left edge (y=70–84) share the y=79–84 range. Endpoint matching
+                    // fails because neither endpoint of the lower segment is within
+                    // tolerance of the chain head. We detect the T-junction, split the
+                    // overlapping segment, continue toward the farther endpoint, and put
+                    // the near-half back into the pool for later pickup.
+                    Segment tSeg = findTIntersection(segments, headX, headY, toleranceSq);
+                    if (tSeg != null) {
+                        tSeg.used = true;
+                        double d1sq = distSq(tSeg.startX, tSeg.startY, headX, headY);
+                        double d2sq = distSq(tSeg.endX, tSeg.endY, headX, headY);
+                        double farX, farY, nearX, nearY;
+                        if (d1sq > d2sq) {
+                            farX = tSeg.startX; farY = tSeg.startY;
+                            nearX = tSeg.endX;  nearY = tSeg.endY;
+                        } else {
+                            farX = tSeg.endX;   farY = tSeg.endY;
+                            nearX = tSeg.startX; nearY = tSeg.startY;
+                        }
+                        // Return the near half to the pool so it can be picked up later.
+                        segments.add(Segment.draw(headX, headY, nearX, nearY));
+                        subpath.append(String.format(Locale.US, " L %.6f %.6f", farX, farY));
+                        headX = farX;
+                        headY = farY;
+                        spMinX = Math.min(spMinX, headX); spMinY = Math.min(spMinY, headY);
+                        spMaxX = Math.max(spMaxX, headX); spMaxY = Math.max(spMaxY, headY);
+                        if (!leftToleranceBall
+                                && distSq(headX, headY, loopStartX, loopStartY) > toleranceSq) {
+                            leftToleranceBall = true;
+                        }
+                        continue;
+                    }
+                    break; // open loop — emit Z anyway to let SVG fill it
+                }
                 next.used = true;
-                appendSegment(path, next, reverse, options);
+                appendSegment(subpath, next, reverse, options);
                 headX = reverse ? next.startX : next.endX;
                 headY = reverse ? next.startY : next.endY;
+                spMinX = Math.min(spMinX, headX); spMinY = Math.min(spMinY, headY);
+                spMaxX = Math.max(spMaxX, headX); spMaxY = Math.max(spMaxY, headY);
+                if (next.isArc) spHasArc = true;
                 if (!leftToleranceBall
                     && distSq(headX, headY, loopStartX, loopStartY) > toleranceSq) {
                     leftToleranceBall = true;
                 }
             }
-            path.append(" Z");
+            subpath.append(" Z");
+
+            subpathList.add(subpath.toString());
+            subpathBoundsList.add(new double[]{spMinX, spMinY, spMaxX, spMaxY});
+            subpathHasArcList.add(spHasArc);
+        }
+
+        // When there are multiple subpaths, filter out any non-arc subpath whose
+        // bounding box equals the overall bounding box — that is the outer panel frame
+        // rectangle. Keeping it causes its winding to cancel the PCB outline's winding
+        // under the nonzero fill rule, making the board interior transparent.
+        double bbTol = OUTLINE_CHAIN_TOLERANCE_MM;
+        StringBuilder path = new StringBuilder();
+        for (int i = 0; i < subpathList.size(); i++) {
+            double[] sb = subpathBoundsList.get(i);
+            if (subpathList.size() > 1 && !subpathHasArcList.get(i)
+                    && Math.abs(sb[0] - allMinX) <= bbTol
+                    && Math.abs(sb[1] - allMinY) <= bbTol
+                    && Math.abs(sb[2] - allMaxX) <= bbTol
+                    && Math.abs(sb[3] - allMaxY) <= bbTol) {
+                continue; // outer panel frame rectangle — skip
+            }
+            if (path.length() > 0) path.append(" ");
+            path.append(subpathList.get(i));
         }
 
         return path.toString().trim();
@@ -772,6 +864,33 @@ public class MultiLayerSVGRenderer {
     private static double distSq(double ax, double ay, double bx, double by) {
         double dx = ax - bx, dy = ay - by;
         return dx * dx + dy * dy;
+    }
+
+    /**
+     * T-intersection detection: find the first unused linear segment whose
+     * interior (strictly between its endpoints) contains the given head point
+     * within {@link #OUTLINE_CHAIN_TOLERANCE_MM}. Returns {@code null} if none.
+     */
+    private static Segment findTIntersection(List<Segment> segments,
+                                             double hx, double hy,
+                                             double toleranceSq) {
+        for (Segment s : segments) {
+            if (s.used || s.isArc) continue;
+            double dx = s.endX - s.startX;
+            double dy = s.endY - s.startY;
+            double lenSq = dx * dx + dy * dy;
+            if (lenSq < 1e-12) continue;
+            // Parameter t of the head's projection onto the segment line (0=start, 1=end)
+            double t = ((hx - s.startX) * dx + (hy - s.startY) * dy) / lenSq;
+            // Must be strictly interior — not near either endpoint
+            double eps = Math.sqrt(toleranceSq / lenSq);
+            if (t <= eps || t >= 1.0 - eps) continue;
+            // Perpendicular distance from head to the segment line
+            double px = s.startX + t * dx - hx;
+            double py = s.startY + t * dy - hy;
+            if (px * px + py * py <= toleranceSq) return s;
+        }
+        return null;
     }
 
     private void appendSegment(StringBuilder path, Segment s, boolean reverse,

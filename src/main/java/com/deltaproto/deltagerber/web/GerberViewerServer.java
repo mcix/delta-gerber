@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.deltaproto.deltagerber.model.drill.DrillDocument;
+import com.deltaproto.deltagerber.model.gerber.ComponentPlacement;
 import com.deltaproto.deltagerber.model.gerber.GerberDocument;
 import com.deltaproto.deltagerber.parser.ExcellonParser;
 import com.deltaproto.deltagerber.parser.GerberParser;
@@ -116,6 +117,7 @@ public class GerberViewerServer {
 
                 List<MultiLayerSVGRenderer.Layer> layers = new ArrayList<>();
                 List<LayerMeta> layerMetas = new ArrayList<>();
+                List<ComponentPlacement> allComponents = new ArrayList<>();
 
                 // Parse the length-prefixed file protocol
                 int pos = 0;
@@ -150,12 +152,15 @@ public class GerberViewerServer {
                             layer = new MultiLayerSVGRenderer.Layer(name, doc);
                         } else if ("gerber".equals(fileType)) {
                             GerberDocument doc = gerberParser.parse(content);
+                            allComponents.addAll(doc.getComponents());
                             layer = new MultiLayerSVGRenderer.Layer(name, doc);
                         }
 
                         if (layer != null) {
                             String color = getLayerColor(name);
-                            layer.setColor(color).setOpacity(0.85).setLayerType(layerType);
+                            double opacity = (layerType == LayerType.PNP_TOP || layerType == LayerType.PNP_BOTTOM)
+                                ? 0.45 : 0.85;
+                            layer.setColor(color).setOpacity(opacity).setLayerType(layerType);
                             layers.add(layer);
 
                             String id = name.replaceAll("[^a-zA-Z0-9._-]", "_");
@@ -192,7 +197,25 @@ public class GerberViewerServer {
                 json.append(realisticTop != null ? escapeJson(realisticTop) : "null");
                 json.append(",\"realisticBottomSvg\":");
                 json.append(realisticBottom != null ? escapeJson(realisticBottom) : "null");
-                json.append("}");
+
+                // Component placement data from PnP files
+                json.append(",\"components\":[");
+                boolean firstComp = true;
+                for (ComponentPlacement c : allComponents) {
+                    if (!firstComp) json.append(",");
+                    firstComp = false;
+                    json.append("{\"refdes\":").append(escapeJson(c.getRefdes()));
+                    json.append(",\"value\":").append(escapeJson(c.getValue()));
+                    json.append(",\"footprint\":").append(escapeJson(c.getFootprint()));
+                    json.append(",\"mountType\":").append(escapeJson(c.getMountType()));
+                    json.append(",\"x\":").append(String.format(java.util.Locale.US, "%.4f", c.getX()));
+                    json.append(",\"y\":").append(String.format(java.util.Locale.US, "%.4f", c.getY()));
+                    json.append(",\"rotation\":").append(String.format(java.util.Locale.US, "%.2f", c.getRotation()));
+                    json.append(",\"side\":").append(escapeJson(c.getSide()));
+                    json.append("}");
+                }
+                json.append("]}");
+
 
                 long elapsed = System.currentTimeMillis() - startTime;
                 log.info("Render complete: {} layers in {}ms", layerMetas.size(), elapsed);
@@ -354,6 +377,7 @@ public class GerberViewerServer {
         LAYER_COLORS.put("gtp", "#888888"); LAYER_COLORS.put("gbp", "#666666");
         LAYER_COLORS.put("gko", "#ffff00"); LAYER_COLORS.put("gm1", "#ffff00"); LAYER_COLORS.put("edge", "#ffff00");
         LAYER_COLORS.put("drl", "#00ffff"); LAYER_COLORS.put("xln", "#00ffff"); LAYER_COLORS.put("drd", "#00ffff");
+        LAYER_COLORS.put("pnp", "#cc44cc");
     }
 
     public static String getLayerColor(String filename) {

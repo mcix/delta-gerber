@@ -6,6 +6,7 @@ import com.deltaproto.deltagerber.model.gerber.attribute.FileAttribute;
 import com.deltaproto.deltagerber.model.gerber.operation.GraphicsObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ public class GerberDocument {
     private final Map<String, MacroTemplate> macroTemplates = new HashMap<>();
     private final List<GraphicsObject> objects = new ArrayList<>();
     private final List<String> warnings = new ArrayList<>();
+    private final List<ComponentPlacement> components = new ArrayList<>();
 
     private BoundingBox boundingBox;
 
@@ -118,6 +120,28 @@ public class GerberDocument {
 
     public double getHeightMm() {
         return unit.toMm(getHeight());
+    }
+
+    public void addComponent(ComponentPlacement component) {
+        components.add(component);
+    }
+
+    public List<ComponentPlacement> getComponents() {
+        return Collections.unmodifiableList(components);
+    }
+
+    /** True when .FileFunction identifies this file as a component placement (PnP) file. */
+    public boolean isComponentFile() {
+        return "Component".equals(getFileFunction());
+    }
+
+    /** "Top", "Bottom", or "" — derived from the .FileFunction attribute values. */
+    public String getComponentSide() {
+        for (String v : getFileFunctionValues()) {
+            if ("Top".equalsIgnoreCase(v)) return "Top";
+            if ("Bot".equalsIgnoreCase(v) || "Bottom".equalsIgnoreCase(v)) return "Bottom";
+        }
+        return "";
     }
 
     public void addWarning(String warning) {

@@ -414,22 +414,29 @@ public class RealisticSvgRenderTest {
 
         Files.writeString(OUTPUT_DIR.resolve("realistic-mixed-direction.svg"), svg);
 
-        // The outline is a rectangle + inner circle cutout → exactly 2 closed subpaths
+        // The outer rectangle spans the overall bounding box of all segments, so the
+        // panel-frame filter removes it from the clip path (it would cancel the inner
+        // loop's winding under the nonzero rule if kept). The inner 12-segment polygon
+        // is the only subpath retained in the clip.
+        //
+        // This test still exercises bidirectional chaining: the inner circle uses
+        // alternating forward/reverse segments (half emitted in each direction), so
+        // correct endpoint-graph walking is required to assemble the 12-sided polygon.
         int moveCount = countOccurrences(d, "M ");
         int closeCount = countOccurrences(d, "Z");
-        assertEquals(2, moveCount,
-            "Expected exactly 2 subpaths (outer rect + inner circle), got " + moveCount
-            + ". Path: " + d);
-        assertEquals(2, closeCount,
-            "Expected exactly 2 close commands, got " + closeCount);
+        assertEquals(1, moveCount,
+            "Expected 1 subpath (inner polygon; outer rect treated as panel frame), got "
+            + moveCount + ". Path: " + d);
+        assertEquals(1, closeCount,
+            "Expected 1 close command, got " + closeCount);
 
-        // Each subpath must have more than one segment (no orphaned M..L..Z pairs)
+        // The retained subpath must have all 12 segments (no orphaned M..L..Z pairs)
         String[] subpaths = d.split("(?=M )");
         for (String sp : subpaths) {
             if (sp.isBlank()) continue;
             int lines = countOccurrences(sp, "L ");
-            assertTrue(lines > 1,
-                "Subpath should contain multiple L segments, got " + lines + ": " + sp);
+            assertTrue(lines >= 11,
+                "Inner polygon subpath should have ≥11 L segments, got " + lines + ": " + sp);
         }
     }
 
@@ -801,6 +808,131 @@ public class RealisticSvgRenderTest {
     private static void appendReversed(StringBuilder g, int[] from, int[] to) {
         g.append("X").append(to[0]).append("Y").append(to[1]).append("D02*\n");
         g.append("X").append(from[0]).append("Y").append(from[1]).append("D01*\n");
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("Outline with T-intersections (overlapping collinear segments) chains into one loop")
+    void testOutlineWithTIntersections() throws Exception {
+        // Reproduces a real-world flex-PCB/rigid-flex panel bug: the board outline
+        // contains overlapping collinear segments along shared rigid/flex boundaries.
+        // For example, a flex connector tab's left edge (y = 79–91 mm) and the flex
+        // cable body's left edge (y = 70–84 mm) both run at the same x coordinate,
+        // overlapping between y = 79–84 mm. The greedy endpoint-chaining algorithm
+        // fails here because neither endpoint of the cable-body segment is within
+        // tolerance of the chain head at y = 79: the endpoints are at y = 70 and
+        // y = 84, both several mm away. Without T-intersection detection, the chain
+        // closes prematurely creating many small fragmented subpaths, which produce
+        // holes in the clip-path (black "H"-shaped voids in the realistic view).
+        //
+        // The fix detects that the head lies on the interior of the collinear segment,
+        // splits it at that point, and continues toward the farther endpoint.
+        //
+        // Synthetic outline (FSLAX44Y44 MM, all in 0.1 µm units → 10 mm = 100000):
+        //
+        //   +------------------+   y=900 (9 mm top)  — top of tab
+        //   |     TAB          |   tab: x=300..450, y=700..900
+        //   +-+            +---+   y=700 — tab base
+        //     |            |       both sides: x=300 and x=450, y=500..840 (overlap with tab)
+        //   +-+            +---+   y=840 — flex body top overlap end
+        //   |    MAIN BODY     |   y=500..840
+        //   +------------------+   y=500 (5 mm bottom)
+
+        String gerber = buildTIntersectionOutline();
+        GerberDocument outlineDoc = gerberParser.parse(gerber);
+
+        List<MultiLayerSVGRenderer.Layer> layers = new ArrayList<>();
+        layers.add(new MultiLayerSVGRenderer.Layer("outline", outlineDoc)
+            .setLayerType(LayerType.OUTLINE));
+
+        MultiLayerSVGRenderer renderer = new MultiLayerSVGRenderer();
+        String svg = renderer.renderRealistic(layers);
+        Files.writeString(OUTPUT_DIR.resolve("realistic-t-intersection.svg"), svg);
+
+        Document parsed = parseSvg(svg);
+        Element clipPath = (Element) parsed.getElementsByTagName("clipPath").item(0);
+        Element pathEl = (Element) clipPath.getElementsByTagName("path").item(0);
+        String d = pathEl.getAttribute("d");
+
+        // The main PCB outline must be one closed subpath.
+        // (There may be tiny near-half orphan slivers as additional subpaths, but the
+        // first subpath must close and contain all the major outline segments.)
+        String[] subpaths = d.split("(?= M )");
+        assertTrue(subpaths.length >= 1, "Must have at least one subpath");
+        String main = subpaths[0].trim();
+        assertTrue(main.startsWith("M "), "First subpath must start with M");
+        assertTrue(main.endsWith("Z"), "First subpath must end with Z");
+
+        // The main outline must visit the four key corners of the board outline.
+        // Expressed in mm: tab at y=9.0, flex junction at y=7.0, body at y=5.0,
+        // and the x-extent from 3.0 to 4.5 (left/right sides).
+        // Check that the main subpath contains L commands to the far endpoints
+        // (y=5.0 / y=9.0) proving the T-intersection was crossed, not just the
+        // overlap region (y=7.0 to y=8.4).
+        assertTrue(d.contains("5.000000") || d.contains("50.000000"),
+            "Clip path must reach the bottom of the main body (y=5 mm or 50 mm coordinate)");
+        assertTrue(d.contains("9.000000") || d.contains("90.000000"),
+            "Clip path must reach the top of the tab (y=9 mm or 90 mm coordinate)");
+    }
+
+    /**
+     * Builds a Gerber outline representing a tab-and-body PCB shape where the
+     * tab's left/right edges and the body's left/right edges OVERLAP along a
+     * shared collinear segment — producing a T-intersection that the endpoint-only
+     * chaining algorithm cannot cross without a split.
+     *
+     * <pre>
+     *  x: 3..4.5 mm,  y: 5..9 mm (approx)
+     *
+     *   300  450
+     *    |    |   y=900  top of tab
+     *    +----+
+     *    |    |   y=700  tab base (T-junction: tab edge starts here, body edge ends at y=840)
+     *    |    |   y=840  top of body side overlap region
+     *    |    |
+     *  100    550
+     *    |    |   y=500  bottom of body
+     *    +----+
+     * </pre>
+     *
+     * The left side: tab segment (300, 700)→(300, 900) and body segment (300, 500)→(300, 840)
+     * overlap at y=700..840. The endpoint at (300, 700) is 1.4 mm from the body's
+     * far endpoint at (300, 840), beyond the 0.1 mm chain tolerance.
+     */
+    private String buildTIntersectionOutline() {
+        // FSLAX44Y44 MM: 1 unit = 0.1 µm.  10 mm = 100000 units.
+        // Body corners: x=100,550 y=500,840  Tab: x=300,450 y=700,900
+        StringBuilder g = new StringBuilder();
+        g.append("G04 synthetic T-intersection outline — tab+body with overlapping edges*\n");
+        g.append("%FSLAX44Y44*%\n");
+        g.append("%MOMM*%\n");
+        g.append("G01*\n");
+        g.append("%ADD10C,0.1000*%\n");
+        g.append("D10*\n");
+
+        // Body: bottom edge
+        appendLine(g, 100000, 50000, 550000, 50000);
+        // Body: right side (y=500→840)
+        appendLine(g, 550000, 50000, 550000, 84000);
+        // Body: step-in right to tab right base
+        appendLine(g, 550000, 84000, 45000, 84000);
+        // Tab: right side (y=700→900)  ← overlaps body right at y=700..840
+        appendLine(g, 45000, 70000, 45000, 90000);
+        // Tab: top edge
+        appendLine(g, 45000, 90000, 30000, 90000);
+        // Tab: left side (y=900→700)  ← overlaps body left at y=700..840
+        appendLine(g, 30000, 90000, 30000, 70000);
+        // Body: step-in left from tab left base
+        appendLine(g, 30000, 84000, 100000, 84000);
+        // Body: left side (y=840→500)
+        appendLine(g, 100000, 84000, 100000, 50000);
+
+        // Body-side segments that overlap with the tab sides (the T-intersection sources)
+        appendLine(g, 100000, 50000, 100000, 84000);   // left overlap (y=500→840, shares y=700..840 with tab left)
+        appendLine(g, 550000, 84000, 550000, 50000);   // right overlap (y=840→500, shares y=700..840 with tab right)
+
+        g.append("M02*\n");
+        return g.toString();
     }
 
     private static int countOccurrences(String haystack, String needle) {

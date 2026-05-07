@@ -16,5 +16,7 @@ public enum LayerType {
     DRILL,
     DRILL_PLATED,
     DRILL_NON_PLATED,
+    PNP_TOP,
+    PNP_BOTTOM,
     OTHER
 }

@@ -4,6 +4,7 @@ import com.deltaproto.deltagerber.lexer.GerberLexer;
 import com.deltaproto.deltagerber.lexer.Token;
 import com.deltaproto.deltagerber.lexer.TokenType;
 import com.deltaproto.deltagerber.model.gerber.*;
+import com.deltaproto.deltagerber.model.gerber.ComponentPlacement;
 import com.deltaproto.deltagerber.model.gerber.aperture.*;
 import com.deltaproto.deltagerber.model.gerber.aperture.macro.MacroTemplate;
 import com.deltaproto.deltagerber.model.gerber.attribute.FileAttribute;
@@ -44,6 +45,16 @@ public class GerberParser {
     private boolean loadMirrorX = false;   // Mirror X axis
     private boolean loadMirrorY = false;   // Mirror Y axis
 
+    // Component placement state (populated from %TO.*% object attributes)
+    private String toRefdes;
+    private String toValue;
+    private String toFootprint;
+    private String toMountType;
+    private double toRotation;
+    private boolean inComponentContext;
+    private boolean hasPinAttribute;
+    private boolean centroidRecorded;
+
     // Modal D-code: Gerber D-codes are modal — a coordinate without an explicit
     // D-code reuses the last active D-code (D01, D02, or D03).
     private TokenType lastDCode = null;
@@ -52,6 +63,22 @@ public class GerberParser {
     private static final Pattern COORD_Y = Pattern.compile("Y([+-]?\\d+)");
     private static final Pattern COORD_I = Pattern.compile("I([+-]?\\d+)");
     private static final Pattern COORD_J = Pattern.compile("J([+-]?\\d+)");
+
+    private void resetState() {
+        coordFormat = null;
+        unit = Unit.MM;
+        currentX = 0; currentY = 0;
+        currentAperture = null;
+        currentPolarity = Polarity.DARK;
+        linearMode = true; clockwise = true; multiQuadrant = true;
+        inRegion = false; currentRegion = null; currentContour = null;
+        loadRotation = 0; loadScaling = 1.0; loadMirrorX = false; loadMirrorY = false;
+        toRefdes = null; toValue = null; toFootprint = null; toMountType = null;
+        toRotation = 0; inComponentContext = false; hasPinAttribute = false; centroidRecorded = false;
+        lastDCode = null;
+        pendingX = Double.NaN; pendingY = Double.NaN; pendingI = Double.NaN; pendingJ = Double.NaN;
+        srStartIndex = -1; srRepeatX = 1; srRepeatY = 1; srStepX = 0; srStepY = 0;
+    }
 
     public GerberDocument parse(String content) {
         long startTime = System.currentTimeMillis();
@@ -62,6 +89,7 @@ public class GerberParser {
             content = content.substring(1);
         }
 
+        resetState();
         document = new GerberDocument();
         GerberLexer lexer = new GerberLexer();
 
@@ -93,6 +121,8 @@ public class GerberParser {
             case APERTURE_MACRO -> parseApertureMacro(token);
             case APERTURE_SELECT -> parseApertureSelect(token);
             case FILE_ATTRIBUTE -> parseFileAttribute(token);
+            case OBJECT_ATTRIBUTE -> parseObjectAttribute(token);
+            case DELETE_ATTRIBUTE -> parseDeleteAttribute(token);
             case POLARITY -> parsePolarity(token);
             case LOAD_ROTATION -> parseLoadRotation(token);
             case LOAD_SCALING -> parseLoadScaling(token);
@@ -327,6 +357,45 @@ public class GerberParser {
         }
     }
 
+    private void parseObjectAttribute(Token token) {
+        String content = token.getContent();
+        // Strip leading "TO." or "TO" prefix
+        if (content.startsWith("TO.")) content = content.substring(3);
+        else if (content.startsWith("TO")) content = content.substring(2);
+
+        int comma = content.indexOf(',');
+        String key = comma >= 0 ? content.substring(0, comma) : content;
+        String value = comma >= 0 ? content.substring(comma + 1) : "";
+
+        switch (key) {
+            case "C" -> {
+                toRefdes = value;
+                toValue = "";
+                toFootprint = "";
+                toMountType = "SMD";
+                toRotation = 0;
+                inComponentContext = true;
+                hasPinAttribute = false;
+                centroidRecorded = false;
+            }
+            case "CVal" -> toValue = value;
+            case "CFtp"  -> toFootprint = value;
+            case "CMnt"  -> toMountType = value;
+            case "CRot"  -> {
+                try { toRotation = Double.parseDouble(value); }
+                catch (NumberFormatException e) { toRotation = 0; }
+            }
+            case "P" -> hasPinAttribute = true;
+        }
+    }
+
+    private void parseDeleteAttribute(Token token) {
+        inComponentContext = false;
+        hasPinAttribute = false;
+        centroidRecorded = false;
+        toRefdes = null;
+    }
+
     private void parsePolarity(Token token) {
         String content = token.getContent();
         if (content.contains("D")) {
@@ -528,6 +597,14 @@ public class GerberParser {
             Flash flash = new Flash(newX, newY, currentAperture, loadRotation, loadScaling, loadMirrorX, loadMirrorY);
             flash.setPolarity(currentPolarity);
             document.addObject(flash);
+        }
+
+        // First D03 per component (before any %TO.P%) is the centroid.
+        if (inComponentContext && !hasPinAttribute && !centroidRecorded && toRefdes != null) {
+            document.addComponent(new ComponentPlacement(
+                toRefdes, toValue, toFootprint, toMountType,
+                newX, newY, toRotation, document.getComponentSide()));
+            centroidRecorded = true;
         }
 
         currentX = newX;

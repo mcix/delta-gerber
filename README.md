@@ -128,6 +128,54 @@ layers.add(new MultiLayerSVGRenderer.Layer("drill", drillDoc)
 String svg = renderer.render(layers);
 ```
 
+### Component Placement (Pick-and-Place / Centroid)
+
+KiCad and other EDA tools can export component placement data as Gerber X2 files with `%TF.FileFunction,Component,...*%`. The parser extracts the centroid of each component and makes it available as a `List<ComponentPlacement>`.
+
+```java
+GerberParser parser = new GerberParser();
+GerberDocument doc = parser.parse(pnpFileContent);
+
+if (doc.isComponentFile()) {
+    String side = doc.getComponentSide(); // "Top" or "Bottom"
+    List<ComponentPlacement> components = doc.getComponents();
+
+    for (ComponentPlacement c : components) {
+        System.out.printf("%s\t%s\t%s\t%.4f\t%.4f\t%.1f\t%s%n",
+            c.getRefdes(),     // e.g. "R1"
+            c.getValue(),      // e.g. "10k"
+            c.getFootprint(),  // e.g. "R_0402_1005Metric"
+            c.getX(),          // centroid X in mm
+            c.getY(),          // centroid Y in mm
+            c.getRotation(),   // degrees
+            c.getSide());      // "Top" or "Bottom"
+    }
+}
+```
+
+**Export to CSV:**
+
+```java
+StringBuilder csv = new StringBuilder("Designator,Value,Footprint,MountType,X_mm,Y_mm,Rotation_deg,Side\n");
+for (ComponentPlacement c : doc.getComponents()) {
+    csv.append(String.format(Locale.US, "\"%s\",\"%s\",\"%s\",\"%s\",%.4f,%.4f,%.2f,\"%s\"%n",
+        c.getRefdes(), c.getValue(), c.getFootprint(), c.getMountType(),
+        c.getX(), c.getY(), c.getRotation(), c.getSide()));
+}
+Files.writeString(Path.of("centroid.csv"), csv.toString());
+```
+
+If you have separate top and bottom PnP files, parse each one independently and combine the lists:
+
+```java
+GerberParser parser = new GerberParser();
+List<ComponentPlacement> all = new ArrayList<>();
+all.addAll(parser.parse(pnpTopContent).getComponents());
+all.addAll(parser.parse(pnpBottomContent).getComponents());
+```
+
+Each coordinate is in **millimetres**, normalised at parse time regardless of the source file unit. The `mountType` field is `"SMD"` or `"TH"` as declared in `%TO.CMnt*%`.
+
 ### Realistic PCB Rendering
 
 ```java
